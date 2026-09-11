@@ -11,6 +11,7 @@ from common.health import HealthCheckView
 api_v1_patterns = [
     path('health/', HealthCheckView.as_view(), name='api-v1-health'),
     path('auth/', include('apps.authentication.urls', namespace='auth')),
+    path('locations/', include('apps.locations.urls', namespace='locations')),
 ]
 
 urlpatterns = [

@@ -1,1 +1,77 @@
 @import "tailwindcss";
+
+@layer utilities {
+  .font-hind {
+    font-family: 'Hind Siliguri', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  .font-baloo {
+    font-family: 'Baloo Da 2', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  .font-tiro {
+    font-family: 'Tiro Bangla', Georgia, Cambria, 'Times New Roman', Times, serif;
+  }
+}
+
+/* ==================================================
+   GLOBAL BANGLA TYPOGRAPHY STANDARD CLASSES
+   ================================================== */
+
+/* 1. Large Heading (Hind Siliguri): Page Title, Major Headings */
+.bangla-heading-large {
+  font-family: 'Hind Siliguri', sans-serif;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+/* 2. Medium Heading (Baloo Da 2): Section Title, Sub-heading */
+.bangla-heading-medium {
+  font-family: 'Baloo Da 2', sans-serif;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+/* 2b. Card Heading (Baloo Da 2): Card Titles, Sub-headings */
+.bangla-heading-card {
+  font-family: 'Baloo Da 2', sans-serif;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* 2c. Button Heading/Prompt (Baloo Da 2): Important button action text */
+.bangla-btn-text {
+  font-family: 'Baloo Da 2', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* 3. Body Text (Tiro Bangla): Normal reading text, descriptions */
+.bangla-body {
+  font-family: 'Tiro Bangla', serif;
+  font-weight: 400;
+  line-height: 1.65;
+}
+
+/* 3b. Form & Field Labels (Tiro Bangla) */
+.bangla-label {
+  font-family: 'Tiro Bangla', serif;
+  font-weight: 500;
+}
+
+/* 3c. Helper Text & Captions (Tiro Bangla) */
+.bangla-helper {
+  font-family: 'Tiro Bangla', serif;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* 3d. Messages & Alerts (Tiro Bangla) */
+.bangla-message {
+  font-family: 'Tiro Bangla', serif;
+  font-weight: 400;
+}
+
+/* 3e. List Items & Table Cells (Tiro Bangla) */
+.bangla-list-item {
+  font-family: 'Tiro Bangla', serif;
+  font-weight: 400;
+}

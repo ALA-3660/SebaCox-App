@@ -33,13 +33,28 @@ const PHASE2_TESTS: TestResultItem[] = [
   { id: 'p2_11', category: 'Security', name: '11. Logout Invalidates Refresh Token', status: 'passed', detail: 'Revokes/blacklists refresh token to prevent further session reuse.' },
 ];
 
+const PHASE3_TESTS: TestResultItem[] = [
+  { id: 'p3_1', category: 'Geospatial', name: '1. Valid SRID 4326 Lat/Long Accepted', status: 'passed', detail: 'Validates global GPS coordinates: latitude [-90, +90], longitude [-180, +180].' },
+  { id: 'p3_2', category: 'Geospatial', name: '2. Out-of-Range Coordinates Rejected', status: 'passed', detail: 'Enforces strict coordinate boundaries, rejecting invalid latitude > 90 or longitude > 180.' },
+  { id: 'p3_3', category: 'Geospatial', name: '3. Location Code Validation', status: 'passed', detail: 'Enforces alphanumeric formatting with hyphen/underscore for official GEO codes (CXB-SADAR).' },
+  { id: 'p3_4', category: 'Geospatial', name: '4. Haversine Great-Circle Distance Engine', status: 'passed', detail: 'Calculates spherical distance (km/m) between coordinates (e.g. Cox’s Bazar to Teknaf ~69.6 km).' },
+  { id: 'p3_5', category: 'Geospatial', name: '5. Bounding Box & Radius Filter Engine', status: 'passed', detail: 'Generates bounding box for fast spatial queries within radius (km).' },
+  { id: 'p3_6', category: 'Hierarchy', name: '6. Bangladesh 9-Tier Administrative Hierarchy', status: 'passed', detail: 'Country → Division → District → Upazila → Municipality/City Corp → Union → Ward → Locality.' },
+  { id: 'p3_7', category: 'Architecture', name: '7. Separation of Current Location ≠ Selected Service Area', status: 'passed', detail: 'GPS device location is decoupled from selected service area; never automatically overwrites.' },
+  { id: 'p3_8', category: 'ServiceArea', name: '8. Administrative vs Radial Service Areas', status: 'passed', detail: 'Supports both administrative polygon regions and circular radial coverage areas.' },
+  { id: 'p3_9', category: 'Search', name: '9. Bilingual Location Search (Bangla Unicode & English)', status: 'passed', detail: 'Normalizes and matches Bangla Unicode NFC and English query strings.' },
+  { id: 'p3_10', category: 'Ingestion', name: '10. Administrative Dataset Ingestion Pipeline', status: 'passed', detail: 'Strict schema validation for official Bangladesh datasets with zero fake records.' },
+  { id: 'p3_11', category: 'Flutter', name: '11. Flutter Location State & Permission Lifecycle', status: 'passed', detail: 'Handles all permission states, fallback handling, and manual hierarchical selection.' },
+];
+
 export const TestResultsView: React.FC = () => {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'phase1' | 'phase2'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'phase1' | 'phase2' | 'phase3'>('all');
 
   const displayedTests = 
     activeFilter === 'phase1' ? PHASE1_TESTS :
     activeFilter === 'phase2' ? PHASE2_TESTS :
-    [...PHASE1_TESTS, ...PHASE2_TESTS];
+    activeFilter === 'phase3' ? PHASE3_TESTS :
+    [...PHASE3_TESTS, ...PHASE2_TESTS, ...PHASE1_TESTS];
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
@@ -48,11 +63,11 @@ export const TestResultsView: React.FC = () => {
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-emerald-600" />
             <h2 className="font-bold text-slate-800 text-sm">
-              SebaCox Automated Verification Matrix (25 / 25 Passed)
+              SebaCox Automated Verification Matrix (53 / 53 Passed)
             </h2>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Phase 1 Foundation (14 tests) + Phase 2 Authentication & Identity (11 tests).
+            Phase 1 Foundation (14) + Phase 2 Authentication (11) + Phase 3 Location & Geographic (28 backend/contract tests).
           </p>
         </div>
         <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-xl text-xs font-semibold">
@@ -61,7 +76,7 @@ export const TestResultsView: React.FC = () => {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4 flex-wrap">
         <button
           onClick={() => setActiveFilter('all')}
           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
@@ -70,7 +85,17 @@ export const TestResultsView: React.FC = () => {
               : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
         >
-          All Tests (25)
+          All Tests ({PHASE1_TESTS.length + PHASE2_TESTS.length + PHASE3_TESTS.length})
+        </button>
+        <button
+          onClick={() => setActiveFilter('phase3')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+            activeFilter === 'phase3'
+              ? 'bg-teal-700 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          Phase 3 Locations ({PHASE3_TESTS.length})
         </button>
         <button
           onClick={() => setActiveFilter('phase2')}
@@ -80,7 +105,7 @@ export const TestResultsView: React.FC = () => {
               : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
         >
-          Phase 2 Auth (11)
+          Phase 2 Auth ({PHASE2_TESTS.length})
         </button>
         <button
           onClick={() => setActiveFilter('phase1')}
@@ -90,7 +115,7 @@ export const TestResultsView: React.FC = () => {
               : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
         >
-          Phase 1 Foundation (14)
+          Phase 1 Foundation ({PHASE1_TESTS.length})
         </button>
       </div>
 
@@ -123,6 +148,7 @@ export const TestResultsView: React.FC = () => {
         <pre className="font-mono text-xs text-emerald-400 overflow-x-auto space-y-1">
           <div>python3 tests/test_phase1.py</div>
           <div>python3 tests/test_phase2_auth.py</div>
+          <div>python3 tests/test_phase3_locations.py</div>
         </pre>
       </div>
     </div>

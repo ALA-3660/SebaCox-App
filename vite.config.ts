@@ -307,6 +307,253 @@ export default defineConfig(() => {
               return;
             }
 
+            // ==========================================
+            // PHASE 3: LOCATION & GEOGRAPHIC FOUNDATION
+            // ==========================================
+            const locationStore = {
+              countries: [
+                { id: 1, name_bn: 'বাংলাদেশ', name_en: 'Bangladesh', code: 'BGD', is_active: true }
+              ],
+              divisions: [
+                { id: 1, country_id: 1, name_bn: 'চট্টগ্রাম', name_en: 'Chattogram', code: 'CTG', is_active: true },
+                { id: 2, country_id: 1, name_bn: 'ঢাকা', name_en: 'Dhaka', code: 'DHK', is_active: true }
+              ],
+              districts: [
+                { id: 1, division_id: 1, name_bn: 'কক্সবাজার', name_en: "Cox's Bazar", code: 'CXB', is_active: true },
+                { id: 2, division_id: 1, name_bn: 'চট্টগ্রাম', name_en: 'Chattogram', code: 'CHIT', is_active: true },
+                { id: 3, division_id: 2, name_bn: 'ঢাকা', name_en: 'Dhaka', code: 'DHAK', is_active: true }
+              ],
+              upazilas: [
+                { id: 1, district_id: 1, name_bn: 'কক্সবাজার সদর', name_en: "Cox's Bazar Sadar", code: 'CXB-SADAR', is_active: true },
+                { id: 2, district_id: 1, name_bn: 'চকোরিয়া', name_en: 'Chakaria', code: 'CXB-CHAK', is_active: true },
+                { id: 3, district_id: 1, name_bn: 'মহেশখালী', name_en: 'Maheshkhali', code: 'CXB-MAH', is_active: true },
+                { id: 4, district_id: 1, name_bn: 'রামু', name_en: 'Ramu', code: 'CXB-RAM', is_active: true },
+                { id: 5, district_id: 1, name_bn: 'টেকনাফ', name_en: 'Teknaf', code: 'CXB-TEK', is_active: true },
+                { id: 6, district_id: 1, name_bn: 'উখিয়া', name_en: 'Ukhiya', code: 'CXB-UKH', is_active: true },
+                { id: 7, district_id: 1, name_bn: 'কুতুবদিয়া', name_en: 'Kutubdia', code: 'CXB-KUT', is_active: true },
+                { id: 8, district_id: 1, name_bn: 'পেকুয়া', name_en: 'Pekua', code: 'CXB-PEK', is_active: true },
+                { id: 9, district_id: 1, name_bn: 'ঈদগাঁও', name_en: 'Eidgaon', is_active: true }
+              ],
+              unions: [
+                { id: 1, upazila_id: 1, name_bn: 'ঝিলংজা', name_en: 'Jhilongja', code: 'CXB-JHIL', is_active: true },
+                { id: 2, upazila_id: 1, name_bn: 'পিএমখালী', name_en: 'PM Khali', code: 'CXB-PMKH', is_active: true },
+                { id: 3, upazila_id: 1, name_bn: 'খুরুশকুল', name_en: 'Khurushkul', code: 'CXB-KHUR', is_active: true }
+              ],
+              userContext: {
+                selected_location: {
+                  id: 1,
+                  location_type: 'SELECTED',
+                  address_bn: "কক্সবাজার সদর, কক্সবাজার",
+                  address_en: "Cox's Bazar Sadar, Cox's Bazar",
+                  latitude: 21.4272,
+                  longitude: 92.0058,
+                  upazila_id: 1,
+                  district_id: 1
+                },
+                current_gps_location: null
+              }
+            };
+
+            // Countries
+            if (pathname === '/api/v1/locations/countries' && req.method === 'GET') {
+              res.end(JSON.stringify({
+                success: true,
+                data: locationStore.countries,
+                message: 'দেশ তালিকা প্রাপ্তি সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // Divisions
+            if (pathname === '/api/v1/locations/divisions' && req.method === 'GET') {
+              res.end(JSON.stringify({
+                success: true,
+                data: locationStore.divisions,
+                message: 'বিভাগ তালিকা প্রাপ্তি সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // Districts
+            if (pathname === '/api/v1/locations/districts' && req.method === 'GET') {
+              const url = new URL(req.url, 'http://localhost');
+              const divId = url.searchParams.get('division_id');
+              const filtered = divId 
+                ? locationStore.districts.filter(d => d.division_id === Number(divId))
+                : locationStore.districts;
+              res.end(JSON.stringify({
+                success: true,
+                data: filtered,
+                message: 'জেলা তালিকা প্রাপ্তি সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // Upazilas
+            if (pathname === '/api/v1/locations/upazilas' && req.method === 'GET') {
+              const url = new URL(req.url, 'http://localhost');
+              const distId = url.searchParams.get('district_id');
+              const filtered = distId 
+                ? locationStore.upazilas.filter(u => u.district_id === Number(distId))
+                : locationStore.upazilas;
+              res.end(JSON.stringify({
+                success: true,
+                data: filtered,
+                message: 'উপজেলা তালিকা প্রাপ্তি সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // Unions
+            if (pathname === '/api/v1/locations/unions' && req.method === 'GET') {
+              const url = new URL(req.url, 'http://localhost');
+              const upazilaId = url.searchParams.get('upazila_id');
+              const filtered = upazilaId 
+                ? locationStore.unions.filter(u => u.upazila_id === Number(upazilaId))
+                : locationStore.unions;
+              res.end(JSON.stringify({
+                success: true,
+                data: filtered,
+                message: 'ইউনিয়ন তালিকা প্রাপ্তি সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // Location Search
+            if (pathname === '/api/v1/locations/search' && req.method === 'GET') {
+              const url = new URL(req.url, 'http://localhost');
+              const q = (url.searchParams.get('q') || '').toLowerCase().trim();
+              const results = [];
+              if (q) {
+                locationStore.upazilas.forEach(u => {
+                  const matchesBn = u.name_bn.toLowerCase().includes(q);
+                  const matchesEn = u.name_en.toLowerCase().includes(q);
+                  const matchesCode = u.code ? u.code.toLowerCase().includes(q) : false;
+                  if (matchesBn || matchesEn || matchesCode) {
+                    results.push({
+                      id: u.id,
+                      name_bn: u.name_bn,
+                      name_en: u.name_en,
+                      type: 'UPAZILA',
+                      full_address_bn: `${u.name_bn}, কক্সবাজার`,
+                      full_address_en: `${u.name_en}, Cox's Bazar`,
+                      latitude: u.id === 9 ? 21.5583 : 21.4272,
+                      longitude: u.id === 9 ? 92.0583 : 92.0058
+                    });
+                  }
+                });
+                locationStore.districts.forEach(d => {
+                  if (d.name_bn.toLowerCase().includes(q) || d.name_en.toLowerCase().includes(q)) {
+                    results.push({
+                      id: d.id,
+                      name_bn: d.name_bn,
+                      name_en: d.name_en,
+                      type: 'DISTRICT',
+                      full_address_bn: `${d.name_bn}, চট্টগ্রাম`,
+                      full_address_en: `${d.name_en}, Chattogram`,
+                      latitude: 21.4272,
+                      longitude: 92.0058
+                    });
+                  }
+                });
+              }
+              res.end(JSON.stringify({
+                success: true,
+                data: results,
+                message: 'অনুসন্ধান সম্পন্ন হয়েছে।'
+              }));
+              return;
+            }
+
+            // User Location Context
+            if (pathname === '/api/v1/locations/context') {
+              if (req.method === 'GET') {
+                res.end(JSON.stringify({
+                  success: true,
+                  data: locationStore.userContext,
+                  message: 'ব্যবহারকারীর অবস্থান প্রোফাইল প্রাপ্তি সফল হয়েছে।'
+                }));
+                return;
+              }
+              if (req.method === 'POST') {
+                const body = await parseBody(req);
+                if (body.location_type === 'CURRENT') {
+                  locationStore.userContext.current_gps_location = {
+                    id: 2,
+                    location_type: 'CURRENT',
+                    address_bn: body.address_text || "বর্তমান জিপিএস অবস্থান",
+                    address_en: body.address_text || "Current GPS Location",
+                    latitude: body.latitude,
+                    longitude: body.longitude
+                  };
+                } else {
+                  // Selected location
+                  locationStore.userContext.selected_location = {
+                    id: 1,
+                    location_type: 'SELECTED',
+                    address_bn: body.address_text || "কক্সবাজার সদর",
+                    address_en: body.address_text || "Cox's Bazar Sadar",
+                    latitude: body.latitude || 21.4272,
+                    longitude: body.longitude || 92.0058,
+                    upazila_id: body.upazila_id || 1,
+                    district_id: body.district_id || 1
+                  };
+                }
+                res.end(JSON.stringify({
+                  success: true,
+                  data: locationStore.userContext,
+                  message: 'অবস্থান সফলভাবে আপডেট হয়েছে।'
+                }));
+                return;
+              }
+            }
+
+            // Service Areas
+            if (pathname === '/api/v1/locations/service-areas' && req.method === 'GET') {
+              res.end(JSON.stringify({
+                success: true,
+                data: [
+                  {
+                    id: 1,
+                    name_bn: 'কক্সবাজার পৌরসভা ও পর্যটন এলাকা',
+                    name_en: "Cox's Bazar Municipality & Tourism Zone",
+                    area_type: 'ADMINISTRATIVE',
+                    is_active: true
+                  },
+                  {
+                    id: 2,
+                    name_bn: 'কলাতলী বিচ ১০ কিমি ব্যাসার্ধ',
+                    name_en: "Kolatoli Beach 10km Radial Zone",
+                    area_type: 'RADIUS',
+                    radius_km: 10.0,
+                    is_active: true
+                  }
+                ],
+                message: 'সার্ভিস এরিয়া তালিকা প্রাপ্তি সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // Reverse geocode
+            if (pathname === '/api/v1/locations/reverse-geocode' && req.method === 'GET') {
+              const url = new URL(req.url, 'http://localhost');
+              const lat = parseFloat(url.searchParams.get('lat') || '21.4272');
+              const lon = parseFloat(url.searchParams.get('lon') || '92.0058');
+              res.end(JSON.stringify({
+                success: true,
+                data: {
+                  latitude: lat,
+                  longitude: lon,
+                  address_bn: "কলাতলী রোড, কক্সবাজার সদর, কক্সবাজার",
+                  address_en: "Kolatoli Road, Cox's Bazar Sadar, Cox's Bazar",
+                  district: "কক্সবাজার",
+                  upazila: "কক্সবাজার সদর"
+                },
+                message: 'রিভার্স জিওকোডিং সফল হয়েছে।'
+              }));
+              return;
+            }
+
             if (pathname.startsWith('/api/v1/')) {
               res.statusCode = 404;
               res.end(

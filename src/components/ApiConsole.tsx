@@ -58,7 +58,60 @@ const PRESETS: Preset[] = [
     endpoint: '/api/v1/auth/me/',
   },
   {
-    name: '9. Invalid Route (Standard 404)',
+    name: '9. Locations: Countries',
+    method: 'GET',
+    endpoint: '/api/v1/locations/countries/',
+  },
+  {
+    name: '10. Locations: Divisions',
+    method: 'GET',
+    endpoint: '/api/v1/locations/divisions/',
+  },
+  {
+    name: '11. Locations: Districts (Chattogram)',
+    method: 'GET',
+    endpoint: '/api/v1/locations/districts/?division_id=1',
+  },
+  {
+    name: '12. Locations: Upazilas (Cox\'s Bazar)',
+    method: 'GET',
+    endpoint: '/api/v1/locations/upazilas/?district_id=1',
+  },
+  {
+    name: '13. Locations: Search ("কক্সবাজার" / "Teknaf")',
+    method: 'GET',
+    endpoint: '/api/v1/locations/search/?q=কক্সবাজার',
+  },
+  {
+    name: '14. Locations: Context Profile (GET)',
+    method: 'GET',
+    endpoint: '/api/v1/locations/context/',
+  },
+  {
+    name: '15. Locations: Set Selected Area (POST)',
+    method: 'POST',
+    endpoint: '/api/v1/locations/context/',
+    body: JSON.stringify({
+      location_type: 'SELECTED',
+      address_text: 'কক্সবাজার সদর, কক্সবাজার',
+      upazila_id: 1,
+      district_id: 1,
+      latitude: 21.4272,
+      longitude: 92.0058
+    }, null, 2)
+  },
+  {
+    name: '16. Locations: Reverse Geocode (GPS)',
+    method: 'GET',
+    endpoint: '/api/v1/locations/reverse-geocode/?lat=21.4272&lon=92.0058',
+  },
+  {
+    name: '17. Locations: Service Areas',
+    method: 'GET',
+    endpoint: '/api/v1/locations/service-areas/',
+  },
+  {
+    name: '18. Invalid Route (Standard 404)',
     method: 'GET',
     endpoint: '/api/v1/invalid-route/',
   },

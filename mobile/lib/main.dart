@@ -8,6 +8,10 @@ import 'features/auth/screens/auth_home_screen.dart';
 import 'features/auth/screens/auth_screen.dart';
 import 'features/auth/services/auth_service.dart';
 
+import 'features/location/repositories/location_repository.dart';
+import 'features/location/services/device_location_service.dart';
+import 'features/location/services/location_api_service.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -21,13 +25,28 @@ void main() {
     apiClient: apiClient,
   );
 
-  runApp(SebaCoxApp(authRepository: authRepository));
+  final locationApiService = LocationApiService(apiClient);
+  final deviceLocationService = DeviceLocationService();
+  final locationRepository = LocationRepository(
+    apiService: locationApiService,
+    deviceService: deviceLocationService,
+  );
+
+  runApp(SebaCoxApp(
+    authRepository: authRepository,
+    locationRepository: locationRepository,
+  ));
 }
 
 class SebaCoxApp extends StatefulWidget {
   final AuthRepository authRepository;
+  final LocationRepository locationRepository;
 
-  const SebaCoxApp({super.key, required this.authRepository});
+  const SebaCoxApp({
+    super.key,
+    required this.authRepository,
+    required this.locationRepository,
+  });
 
   @override
   State<SebaCoxApp> createState() => _SebaCoxAppState();
@@ -81,6 +100,7 @@ class _SebaCoxAppState extends State<SebaCoxApp> {
             case AuthStatus.authenticated:
               return AuthHomeScreen(
                 authRepository: widget.authRepository,
+                locationRepository: widget.locationRepository,
                 user: authState.user!,
               );
 

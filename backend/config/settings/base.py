@@ -46,6 +46,7 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     'common',
     'apps.authentication',
+    'apps.locations',
 ]
 
 # Custom User Model for SebaCox
