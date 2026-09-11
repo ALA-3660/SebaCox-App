@@ -1,36 +1,126 @@
 import React, { useState } from 'react';
-import { Play, CheckCircle2, AlertCircle, Copy, Check, Terminal, ExternalLink } from 'lucide-react';
+import { Play, CheckCircle2, AlertCircle, Copy, Check, Terminal, ExternalLink, Code } from 'lucide-react';
 import { StandardApiResponse } from '../types';
 
+interface Preset {
+  name: string;
+  method: 'GET' | 'POST';
+  endpoint: string;
+  body?: string;
+  auth?: boolean;
+}
+
+const PRESETS: Preset[] = [
+  {
+    name: '1. Health Check (Phase 1)',
+    method: 'GET',
+    endpoint: '/api/v1/health/',
+  },
+  {
+    name: '2. Login: Request OTP (Valid BD)',
+    method: 'POST',
+    endpoint: '/api/v1/auth/login/request-otp/',
+    body: JSON.stringify({ mobile_number: '01712345678' }, null, 2),
+  },
+  {
+    name: '3. Login: Request OTP (Invalid)',
+    method: 'POST',
+    endpoint: '/api/v1/auth/login/request-otp/',
+    body: JSON.stringify({ mobile_number: '+14155552671' }, null, 2),
+  },
+  {
+    name: '4. Login: Verify OTP',
+    method: 'POST',
+    endpoint: '/api/v1/auth/login/verify-otp/',
+    body: JSON.stringify({ mobile_number: '01712345678', otp_code: '123456' }, null, 2),
+  },
+  {
+    name: '5. Register: Request OTP',
+    method: 'POST',
+    endpoint: '/api/v1/auth/register/request-otp/',
+    body: JSON.stringify({ mobile_number: '01899112233' }, null, 2),
+  },
+  {
+    name: '6. Register: Verify OTP',
+    method: 'POST',
+    endpoint: '/api/v1/auth/register/verify-otp/',
+    body: JSON.stringify({ mobile_number: '01899112233', otp_code: '123456' }, null, 2),
+  },
+  {
+    name: '7. Token Refresh',
+    method: 'POST',
+    endpoint: '/api/v1/auth/token/refresh/',
+    body: JSON.stringify({ refresh_token: 'paste_refresh_token_here' }, null, 2),
+  },
+  {
+    name: '8. Current User / Me (Unauth 401)',
+    method: 'GET',
+    endpoint: '/api/v1/auth/me/',
+  },
+  {
+    name: '9. Invalid Route (Standard 404)',
+    method: 'GET',
+    endpoint: '/api/v1/invalid-route/',
+  },
+];
+
 export const ApiConsole: React.FC = () => {
-  const [endpoint, setEndpoint] = useState<string>('/api/v1/health/');
-  const [method, setMethod] = useState<'GET'>('GET');
+  const [endpoint, setEndpoint] = useState<string>('/api/v1/auth/login/request-otp/');
+  const [method, setMethod] = useState<'GET' | 'POST'>('POST');
+  const [requestBody, setRequestBody] = useState<string>(
+    JSON.stringify({ mobile_number: '01712345678' }, null, 2)
+  );
+  const [tokenHeader, setTokenHeader] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [response, setResponse] = useState<StandardApiResponse | null>(null);
   const [statusCode, setStatusCode] = useState<number | null>(null);
   const [responseTime, setResponseTime] = useState<number | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
 
-  const executeRequest = async (targetEndpoint = endpoint) => {
+  const applyPreset = (p: Preset) => {
+    setMethod(p.method);
+    setEndpoint(p.endpoint);
+    setRequestBody(p.body || '');
+  };
+
+  const executeRequest = async () => {
     setLoading(true);
     setResponse(null);
     setStatusCode(null);
     const start = performance.now();
 
     try {
-      const res = await fetch(targetEndpoint, {
+      const headers: Record<string, string> = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      };
+      if (tokenHeader.trim()) {
+        headers['Authorization'] = tokenHeader.startsWith('Bearer ')
+          ? tokenHeader
+          : `Bearer ${tokenHeader}`;
+      }
+
+      const options: RequestInit = {
         method,
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
+        headers,
+      };
+
+      if (method === 'POST' && requestBody.trim()) {
+        options.body = requestBody;
+      }
+
+      const res = await fetch(endpoint, options);
       const duration = Math.round(performance.now() - start);
       setResponseTime(duration);
       setStatusCode(res.status);
 
       const json = await res.json();
       setResponse(json);
+
+      // Auto-populate token header if tokens returned
+      if (json?.data?.tokens?.access_token) {
+        setTokenHeader(`Bearer ${json.data.tokens.access_token}`);
+      }
     } catch (err: any) {
       setStatusCode(500);
       setResponse({
@@ -57,81 +147,102 @@ export const ApiConsole: React.FC = () => {
       <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2">
           <Terminal className="w-5 h-5 text-teal-700" />
-          <h2 className="font-bold text-slate-800 text-sm">SebaCox Standard API Explorer</h2>
+          <h2 className="font-bold text-slate-800 text-sm">SebaCox Phase 1 & 2 API Console</h2>
         </div>
-        <span className="text-[11px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
-          DRF /api/v1/
-        </span>
+        <div className="text-xs text-slate-500">
+          Standard JSend-compliant contracts
+        </div>
       </div>
 
-      {/* Quick Presets */}
+      {/* Presets */}
       <div className="mb-4">
-        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">
-          Preset Endpoints:
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <button
-            id="btn-preset-health"
-            onClick={() => {
-              setEndpoint('/api/v1/health/');
-              executeRequest('/api/v1/health/');
-            }}
-            className="text-xs px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-800 font-medium hover:bg-emerald-100 transition flex items-center gap-1.5 cursor-pointer"
-          >
-            <span className="font-bold text-[10px] bg-emerald-200 px-1 py-0.2 rounded">GET</span>
-            <span>/api/v1/health/</span>
-            <span className="text-[10px] text-emerald-600">(Success)</span>
-          </button>
-
-          <button
-            id="btn-preset-404"
-            onClick={() => {
-              setEndpoint('/api/v1/invalid-route/');
-              executeRequest('/api/v1/invalid-route/');
-            }}
-            className="text-xs px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 font-medium hover:bg-amber-100 transition flex items-center gap-1.5 cursor-pointer"
-          >
-            <span className="font-bold text-[10px] bg-amber-200 px-1 py-0.2 rounded">GET</span>
-            <span>/api/v1/invalid-route/</span>
-            <span className="text-[10px] text-amber-600">(Standard Error)</span>
-          </button>
+        <label className="block text-xs font-bold text-slate-600 mb-1.5">দ্রুত টেস্ট প্রিসেটস (Quick Presets):</label>
+        <div className="flex flex-wrap gap-1.5">
+          {PRESETS.map((p, idx) => (
+            <button
+              key={idx}
+              onClick={() => applyPreset(p)}
+              className="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 hover:bg-teal-50 hover:text-teal-800 hover:border-teal-300 border border-slate-200 rounded-lg text-slate-700 transition cursor-pointer"
+            >
+              {p.name}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Endpoint URL Input */}
-      <div className="flex items-center gap-2 mb-4">
-        <span className="text-xs font-bold bg-teal-700 text-white px-2.5 py-2 rounded-lg">
-          {method}
-        </span>
-        <input
-          type="text"
-          value={endpoint}
-          onChange={(e) => setEndpoint(e.target.value)}
-          placeholder="/api/v1/health/"
-          className="flex-1 text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-teal-600"
-        />
-        <button
-          id="btn-send-request"
-          onClick={() => executeRequest()}
-          disabled={loading}
-          className="bg-teal-700 hover:bg-teal-800 text-white font-medium text-xs py-2 px-4 rounded-lg flex items-center gap-1.5 transition disabled:opacity-60 cursor-pointer"
+      {/* URL bar */}
+      <div className="flex flex-col sm:flex-row gap-2 mb-3">
+        <select
+          value={method}
+          onChange={(e) => setMethod(e.target.value as 'GET' | 'POST')}
+          className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-teal-900 focus:outline-none"
         >
-          <Play className="w-3.5 h-3.5" />
-          <span>{loading ? 'Sending...' : 'Send'}</span>
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+        </select>
+        <div className="flex-1 flex rounded-xl border border-slate-300 bg-slate-50 overflow-hidden focus-within:border-teal-700">
+          <input
+            type="text"
+            value={endpoint}
+            onChange={(e) => setEndpoint(e.target.value)}
+            className="flex-1 px-3 py-2 text-xs font-mono bg-transparent focus:outline-none text-slate-800 font-semibold"
+            placeholder="/api/v1/auth/..."
+          />
+        </div>
+        <button
+          id="btn-execute-api"
+          onClick={executeRequest}
+          disabled={loading}
+          className="px-5 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+        >
+          <Play className="w-3.5 h-3.5 fill-current" />
+          <span>{loading ? 'পাঠানো হচ্ছে...' : 'অনুরোধ পাঠান'}</span>
         </button>
       </div>
 
+      {/* Optional Auth Header & Body */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+        <div>
+          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+            Authorization Header (Optional):
+          </label>
+          <input
+            type="text"
+            value={tokenHeader}
+            onChange={(e) => setTokenHeader(e.target.value)}
+            placeholder="Bearer <jwt_access_token>"
+            className="w-full px-3 py-1.5 text-xs font-mono border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:border-teal-700"
+          />
+        </div>
+
+        {method === 'POST' && (
+          <div>
+            <label className="block text-[11px] font-bold text-slate-600 mb-1">
+              JSON Request Body:
+            </label>
+            <textarea
+              rows={3}
+              value={requestBody}
+              onChange={(e) => setRequestBody(e.target.value)}
+              className="w-full p-2 text-xs font-mono border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:border-teal-700"
+            />
+          </div>
+        )}
+      </div>
+
       {/* Response Box */}
-      <div className="bg-slate-900 rounded-xl p-4 text-slate-200 font-mono text-xs">
-        <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <span className="text-slate-400 font-sans text-xs">Response</span>
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-700">প্রতিক্রিয়া (Response):</span>
             {statusCode !== null && (
               <span
-                className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
                   statusCode >= 200 && statusCode < 300
-                    ? 'bg-emerald-900/80 text-emerald-300 border border-emerald-700'
-                    : 'bg-red-900/80 text-red-300 border border-red-700'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : statusCode === 404
+                    ? 'bg-amber-100 text-amber-800'
+                    : 'bg-rose-100 text-rose-800'
                 }`}
               >
                 HTTP {statusCode}
@@ -139,48 +250,31 @@ export const ApiConsole: React.FC = () => {
             )}
             {responseTime !== null && (
               <span className="text-[11px] text-slate-400 font-mono">
-                {responseTime}ms
+                {responseTime} ms
               </span>
             )}
           </div>
-
           {response && (
             <button
               onClick={copyResponse}
-              className="text-slate-400 hover:text-white flex items-center gap-1 text-[11px] font-sans cursor-pointer"
+              className="text-xs text-slate-500 hover:text-teal-700 flex items-center gap-1 cursor-pointer font-medium"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Copied' : 'Copy'}</span>
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copied ? 'কপি হয়েছে!' : 'কপি করুন'}</span>
             </button>
           )}
         </div>
 
-        {loading ? (
-          <div className="py-8 text-center text-slate-400">Executing request...</div>
-        ) : response ? (
-          <pre className="overflow-x-auto text-[12px] leading-relaxed text-emerald-400">
-            {JSON.stringify(response, null, 2)}
-          </pre>
-        ) : (
-          <div className="py-8 text-center text-slate-500 font-sans text-xs">
-            Click "Send" or a Preset above to test the standard API responses.
-          </div>
-        )}
-      </div>
-
-      {/* Contract Verification Info */}
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-          <p className="font-semibold text-slate-700 mb-1">Standard Success Contract:</p>
-          <code className="text-[11px] text-slate-600 block">
-            &#123; success: true, data: &#123;...&#125;, message: "সফলভাবে সম্পন্ন হয়েছে" &#125;
-          </code>
-        </div>
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-          <p className="font-semibold text-slate-700 mb-1">Standard Error Contract:</p>
-          <code className="text-[11px] text-slate-600 block">
-            &#123; success: false, data: null, message: "অনুরোধটি সম্পন্ন করা যায়নি", errors: &#123;...&#125; &#125;
-          </code>
+        <div className="bg-slate-900 rounded-xl p-4 font-mono text-xs overflow-x-auto text-emerald-400 min-h-[160px] border border-slate-800">
+          {loading ? (
+            <div className="text-slate-500 italic">সার্ভার থেকে প্রতিক্রিয়া লোড হচ্ছে...</div>
+          ) : response ? (
+            <pre>{JSON.stringify(response, null, 2)}</pre>
+          ) : (
+            <div className="text-slate-600 italic">
+              একটি প্রিসেট নির্বাচন করে 'অনুরোধ পাঠান' বাটনে চাপুন।
+            </div>
+          )}
         </div>
       </div>
     </div>

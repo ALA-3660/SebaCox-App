@@ -239,20 +239,23 @@ files_to_check = [
 missing_files = [f for f in files_to_check if not (ROOT_DIR / f).exists()]
 test("All Phase 1 Architecture Files Present", len(missing_files) == 0, f"Missing: {missing_files}")
 
-# 6. Verify NO Phase 2 Business Models Present (Zero Fake Data)
+# 6. Verify NO Future Phase 3+ Business Models Present (Zero Fake Data)
 forbidden_terms = [
-    'class User', 'class Provider', 'class Hotel', 'class Doctor',
+    'class Provider', 'class Hotel', 'class Doctor',
     'class Bus', 'class Product', 'class Booking', 'class Payment'
 ]
 business_violations = []
 backend_apps_dir = ROOT_DIR / 'backend' / 'apps'
 for py_file in backend_apps_dir.glob('**/*.py'):
+    # Exclude authentication models where User, OTP, and Audit logs legitimately belong
+    if 'authentication' in str(py_file):
+        continue
     content = py_file.read_text(encoding='utf-8')
     for term in forbidden_terms:
         if term in content:
             business_violations.append(f"{py_file.name}: contains {term}")
 
-test("No Phase 2 Business Models Present (Zero Fake Data)", len(business_violations) == 0, f"Violations: {business_violations}")
+test("No Future Phase 3+ Business Models Present (Zero Fake Data)", len(business_violations) == 0, f"Violations: {business_violations}")
 
 print("\n==========================================")
 print(f"Test Summary: {passed} Passed, {failed} Failed")

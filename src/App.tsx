@@ -34,7 +34,7 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-black tracking-tight text-slate-900">SebaCox (সেবাকক্স)</h1>
                 <span className="text-[11px] font-bold bg-teal-50 text-teal-800 px-2 py-0.5 rounded-full border border-teal-200">
-                  Phase 1 — Project Foundation
+                  Phase 2 — Authentication & Identity Foundation
                 </span>
               </div>
               <p className="text-xs text-teal-800 font-medium">

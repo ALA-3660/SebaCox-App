@@ -41,10 +41,6 @@ def normalize_mobile_number(raw_number: str) -> str:
         if BD_MOBILE_REGEX.match(canonical):
             return canonical
 
-    # Extensible hook: If international number starting with '+'
-    if cleaned.startswith('+') and len(cleaned) >= 8 and cleaned[1:].isdigit():
-        return cleaned
-
     raise ValidationError("সঠিক বাংলাদেশি মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX বা +88017XXXXXXXX)।")
 
 def validate_bd_mobile_number(value: str) -> None:

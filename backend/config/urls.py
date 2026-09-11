@@ -10,9 +10,7 @@ from common.health import HealthCheckView
 
 api_v1_patterns = [
     path('health/', HealthCheckView.as_view(), name='api-v1-health'),
-    # Future Phase 2+ business modules will be mounted here:
-    # path('auth/', include('apps.authentication.urls')),
-    # path('services/', include('apps.services.urls')),
+    path('auth/', include('apps.authentication.urls', namespace='auth')),
 ]
 
 urlpatterns = [

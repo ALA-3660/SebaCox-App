@@ -9,31 +9,112 @@ import 'network_exceptions.dart';
 import '../../shared/models/api_response.dart';
 
 /// Reusable HTTP API Client for SebaCox Mobile App.
-/// Handles standard request lifecycles, authentication headers, timeouts, and error contracts.
+/// Handles standard request lifecycles, authentication headers, timeouts, token refresh, and error contracts.
 class ApiClient {
   final http.Client _client;
+  String? _accessToken;
+  Future<String?> Function()? _refreshTokenCallback;
 
-  ApiClient({http.Client? client}) : _client = client ?? http.Client();
+  ApiClient({
+    http.Client? client,
+    String? accessToken,
+    Future<String?> Function()? onRefreshToken,
+  })  : _client = client ?? http.Client(),
+        _accessToken = accessToken,
+        _refreshTokenCallback = onRefreshToken;
+
+  void setAccessToken(String? token) {
+    _accessToken = token;
+  }
+
+  void setRefreshTokenCallback(Future<String?> Function()? callback) {
+    _refreshTokenCallback = callback;
+  }
+
+  Map<String, String> _buildHeaders(Map<String, String>? customHeaders) {
+    final headers = {
+      ApiConstants.headerContentType: ApiConstants.contentTypeJson,
+      ApiConstants.headerAccept: ApiConstants.contentTypeJson,
+    };
+
+    if (_accessToken != null && _accessToken!.isNotEmpty) {
+      headers[ApiConstants.headerAuthorization] = '${ApiConstants.bearerPrefix}$_accessToken';
+    }
+
+    if (customHeaders != null) {
+      headers.addAll(customHeaders);
+    }
+    return headers;
+  }
 
   /// Perform a GET request to the SebaCox backend API
   Future<ApiResponse<T>> get<T>(
     String endpoint, {
     Map<String, String>? headers,
     T Function(dynamic json)? fromJson,
+    bool retryOnAuthFailure = true,
   }) async {
     final uri = Uri.parse('${EnvConfig.apiBaseUrl}$endpoint');
     AppLogger.d('GET Request: $uri');
 
-    final requestHeaders = {
-      ApiConstants.headerContentType: ApiConstants.contentTypeJson,
-      ApiConstants.headerAccept: ApiConstants.contentTypeJson,
-      if (headers != null) ...headers,
-    };
+    final requestHeaders = _buildHeaders(headers);
 
     try {
       final response = await _client
           .get(uri, headers: requestHeaders)
           .timeout(EnvConfig.connectTimeout);
+
+      if (response.statusCode == 401 && retryOnAuthFailure && _refreshTokenCallback != null) {
+        final refreshed = await _refreshTokenCallback!();
+        if (refreshed != null) {
+          _accessToken = refreshed;
+          return get<T>(endpoint, headers: headers, fromJson: fromJson, retryOnAuthFailure: false);
+        }
+      }
+
+      return _processResponse<T>(response, fromJson);
+    } on TimeoutException {
+      AppLogger.e('Network request timed out: $endpoint');
+      throw const TimeoutNetworkException();
+    } on SocketException {
+      AppLogger.e('Socket error / no internet reaching: $endpoint');
+      throw const NoInternetNetworkException();
+    } catch (e) {
+      if (e is NetworkException) rethrow;
+      AppLogger.e('Unexpected network exception: $e');
+      throw ServerNetworkException('সার্ভারের সাথে সংযোগ ব্যর্থ: ${e.toString()}');
+    }
+  }
+
+  /// Perform a POST request to the SebaCox backend API
+  Future<ApiResponse<T>> post<T>(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    Map<String, String>? headers,
+    T Function(dynamic json)? fromJson,
+    bool retryOnAuthFailure = true,
+  }) async {
+    final uri = Uri.parse('${EnvConfig.apiBaseUrl}$endpoint');
+    AppLogger.d('POST Request: $uri');
+
+    final requestHeaders = _buildHeaders(headers);
+
+    try {
+      final response = await _client
+          .post(
+            uri,
+            headers: requestHeaders,
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(EnvConfig.connectTimeout);
+
+      if (response.statusCode == 401 && retryOnAuthFailure && _refreshTokenCallback != null) {
+        final refreshed = await _refreshTokenCallback!();
+        if (refreshed != null) {
+          _accessToken = refreshed;
+          return post<T>(endpoint, body: body, headers: headers, fromJson: fromJson, retryOnAuthFailure: false);
+        }
+      }
 
       return _processResponse<T>(response, fromJson);
     } on TimeoutException {

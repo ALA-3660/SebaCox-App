@@ -178,6 +178,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Configures JSON formatting, custom unified exception handler & pagination.
 # ==============================================================================
 REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'apps.authentication.authentication.JWTAuthentication',
+    ],
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
     ],
@@ -189,6 +192,16 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'common.exceptions.custom_exception_handler',
     'UNAUTHENTICATED_USER': None,
 }
+
+# ==============================================================================
+# PHASE 2: AUTHENTICATION & OTP / TOKEN SETTINGS
+# ==============================================================================
+OTP_EXPIRY_SECONDS = int(os.environ.get('OTP_EXPIRY_SECONDS', 300))
+OTP_MAX_ATTEMPTS = int(os.environ.get('OTP_MAX_ATTEMPTS', 5))
+OTP_RESEND_COOLDOWN_SECONDS = int(os.environ.get('OTP_RESEND_COOLDOWN_SECONDS', 60))
+ALLOW_DEV_OTP = os.environ.get('ALLOW_DEV_OTP', 'True').lower() in ('true', '1', 't')
+JWT_ACCESS_TOKEN_LIFETIME_MINUTES = int(os.environ.get('JWT_ACCESS_TOKEN_LIFETIME_MINUTES', 60))
+JWT_REFRESH_TOKEN_LIFETIME_DAYS = int(os.environ.get('JWT_REFRESH_TOKEN_LIFETIME_DAYS', 30))
 
 # ==============================================================================
 # CORS CONFIGURATION
