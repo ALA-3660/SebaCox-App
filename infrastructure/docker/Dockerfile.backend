@@ -1,0 +1,46 @@
+# ==============================================================================
+# SebaCox Backend Dockerfile
+# "মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+# Multi-stage build for lean, secure Python container
+# ==============================================================================
+
+FROM python:3.11-slim as base
+
+# Prevent Python from writing .pyc and buffer stdout/stderr
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies (including libpq for PostgreSQL)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        libpq-dev \
+        gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependency requirements
+COPY backend/requirements/base.txt ./requirements/
+COPY backend/requirements/production.txt ./requirements/
+
+# Install python packages
+RUN pip install --upgrade pip \
+    && pip install -r ./requirements/production.txt
+
+# Copy backend application code
+COPY backend /app
+
+# Create non-privileged system user for security
+RUN addgroup --system sebacox && adduser --system --group sebacox \
+    && mkdir -p /app/staticfiles /app/media \
+    && chown -R sebacox:sebacox /app
+
+USER sebacox
+
+EXPOSE 8000
+
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120"]
