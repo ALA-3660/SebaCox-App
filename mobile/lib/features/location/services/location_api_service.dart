@@ -1,5 +1,6 @@
 /// Location REST API client service for Flutter.
-/// "মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+/// মূল স্লোগান: “প্রয়োজন থেকে সমাধান- এক অ্যাপেই”
+/// ছোট পরিচিতি: “খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই”
 import '../../../core/network/api_client.dart';
 import '../models/location_models.dart';
 import '../models/user_location_model.dart';

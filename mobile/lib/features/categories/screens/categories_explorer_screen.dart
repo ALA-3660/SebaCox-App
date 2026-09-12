@@ -1,6 +1,8 @@
 /// Categories & Services Explorer Screen for SebaCox.
-/// "মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+/// মূল স্লোগান: “প্রয়োজন থেকে সমাধান- এক অ্যাপেই”
+/// ছোট পরিচিতি: “খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই”
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_brand.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../repositories/category_repository.dart';
@@ -288,6 +290,22 @@ class _CategoriesExplorerScreenState extends State<CategoriesExplorerScreen> wit
                 'বানান পরীক্ষা করুন অথবা ভিন্ন নামে অনুসন্ধান করুন।',
                 style: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary),
               ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.12)),
+                ),
+                child: Text(
+                  AppBrand.shortDescriptionWithQuotes,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.primaryDark,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -347,6 +365,41 @@ class _CategoriesExplorerScreenState extends State<CategoriesExplorerScreen> wit
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Brand Slogan & Short Description Card
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.primary.withOpacity(0.12)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppBrand.sloganWithQuotes,
+                    style: AppTypography.mediumHeading2.copyWith(
+                      color: AppColors.primary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    AppBrand.shortDescriptionWithQuotes,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           // Curated Popular Categories
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),

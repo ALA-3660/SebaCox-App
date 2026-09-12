@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../core/config/env_config.dart';
 import '../../core/constants/api_constants.dart';
+import '../../core/constants/app_brand.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/network/api_client.dart';
+import '../../core/theme/app_typography.dart';
 import '../../shared/helpers/error_mapper.dart';
 import '../../shared/models/health_status.dart';
 import '../../shared/widgets/app_button.dart';
@@ -97,18 +99,33 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               // Product Tagline
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.15)),
                 ),
-                child: const Text(
-                  '“মানুষের প্রয়োজন থেকে সেবার সমাধান।”',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  ),
+                child: Column(
+                  children: [
+                    Text(
+                      AppBrand.sloganWithQuotes,
+                      textAlign: TextAlign.center,
+                      style: AppTypography.mediumHeading2.copyWith(
+                        color: AppColors.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      AppBrand.shortDescriptionWithQuotes,
+                      textAlign: TextAlign.center,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 12),

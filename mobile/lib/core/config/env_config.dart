@@ -1,5 +1,6 @@
 /// Environment and runtime configuration for SebaCox Mobile App.
-/// "মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+/// মূল স্লোগান: “প্রয়োজন থেকে সমাধান- এক অ্যাপেই”
+/// ছোট পরিচিতি: “খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই”
 enum AppEnvironment { development, staging, production }
 
 class EnvConfig {

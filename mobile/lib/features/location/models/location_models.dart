@@ -1,5 +1,6 @@
 /// Geographic hierarchy models for Flutter.
-/// "মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+/// মূল স্লোগান: “প্রয়োজন থেকে সমাধান- এক অ্যাপেই”
+/// ছোট পরিচিতি: “খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই”
 
 class GeographicItem {
   final int id;

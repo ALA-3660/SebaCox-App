@@ -1,5 +1,6 @@
 /// Device GPS and Location Permission Service.
-/// "মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+/// মূল স্লোগান: “প্রয়োজন থেকে সমাধান- এক অ্যাপেই”
+/// ছোট পরিচিতি: “খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই”
 import 'dart:async';
 import '../models/location_enums.dart';
 import '../models/geo_point.dart';

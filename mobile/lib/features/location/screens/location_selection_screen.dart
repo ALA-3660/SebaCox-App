@@ -1,6 +1,8 @@
 /// Location Selection Screen for SebaCox.
-/// "মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+/// মূল স্লোগান: “প্রয়োজন থেকে সমাধান- এক অ্যাপেই”
+/// ছোট পরিচিতি: “খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই”
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_brand.dart';
 import '../repositories/location_repository.dart';
 import '../models/location_models.dart';
 import '../models/location_enums.dart';
@@ -269,20 +271,25 @@ class _LocationSelectionScreenState extends State<LocationSelectionScreen> {
     }
 
     if (_searchResults.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.location_off, size: 48, color: Color(0xFF94A3B8)),
-            SizedBox(height: 12),
-            Text(
+            const Icon(Icons.location_off, size: 48, color: Color(0xFF94A3B8)),
+            const SizedBox(height: 12),
+            const Text(
               'লোকেশন পাওয়া যায়নি',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
             ),
-            SizedBox(height: 4),
-            Text(
+            const SizedBox(height: 4),
+            const Text(
               'সঠিক বানান দিয়ে আবার অনুসন্ধান করুন',
               style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              AppBrand.shortDescriptionWithQuotes,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF0F766E), fontWeight: FontWeight.w600),
             ),
           ],
         ),

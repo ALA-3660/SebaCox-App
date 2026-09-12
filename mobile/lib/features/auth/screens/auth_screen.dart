@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_brand.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_typography.dart';
 import '../repositories/auth_repository.dart';
 import '../widgets/phone_input_field.dart';
 import 'otp_screen.dart';
@@ -103,29 +106,38 @@ class _AuthScreenState extends State<AuthScreen> {
               // Brand logo/tagline
               Container(
                 alignment: Alignment.center,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F766E).withOpacity(0.08),
+                  color: AppColors.primary.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.15)),
                 ),
-                child: const Column(
+                child: Column(
                   children: [
                     Text(
-                      'SebaCox',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F766E),
-                        letterSpacing: 0.5,
+                      '${AppBrand.appNameEn} (${AppBrand.appNameBn})',
+                      style: AppTypography.largeHeading2.copyWith(
+                        color: AppColors.primary,
+                        fontSize: 24,
                       ),
                     ),
-                    SizedBox(height: 6),
+                    const SizedBox(height: 6),
                     Text(
-                      '“মানুষের প্রয়োজন থেকে সেবার সমাধান।”',
-                      style: TextStyle(
+                      AppBrand.sloganWithQuotes,
+                      textAlign: TextAlign.center,
+                      style: AppTypography.mediumHeading2.copyWith(
+                        color: AppColors.primaryDark,
                         fontSize: 14,
-                        color: Color(0xFF475569),
-                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      AppBrand.shortDescriptionWithQuotes,
+                      textAlign: TextAlign.center,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
                       ),
                     ),
                   ],

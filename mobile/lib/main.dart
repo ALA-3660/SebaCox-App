@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'core/config/env_config.dart';
+import 'core/constants/app_brand.dart';
+import 'core/constants/app_colors.dart';
 import 'core/network/api_client.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/app_typography.dart';
 import 'features/auth/models/auth_state.dart';
 import 'features/auth/repositories/auth_repository.dart';
 import 'features/auth/screens/auth_home_screen.dart';
@@ -84,24 +87,80 @@ class _SebaCoxAppState extends State<SebaCoxApp> {
           switch (authState.status) {
             case AuthStatus.unknown:
             case AuthStatus.checkingSession:
-              return const Scaffold(
-                backgroundColor: Color(0xFFF8FAFC),
+              return Scaffold(
+                backgroundColor: const Color(0xFFF8FAFC),
                 body: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        color: Color(0xFF0F766E),
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'সেশন পরীক্ষা করা হচ্ছে...',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF64748B),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withOpacity(0.25),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: const Text(
+                            'SC',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 16),
+                        Text(
+                          '${AppBrand.appNameEn} (${AppBrand.appNameBn})',
+                          style: AppTypography.largeHeading2.copyWith(
+                            color: AppColors.primary,
+                            fontSize: 22,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          AppBrand.sloganWithQuotes,
+                          textAlign: TextAlign.center,
+                          style: AppTypography.mediumHeading2.copyWith(
+                            color: AppColors.primaryDark,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          AppBrand.shortDescriptionWithQuotes,
+                          textAlign: TextAlign.center,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        const CircularProgressIndicator(
+                          color: AppColors.primary,
+                          strokeWidth: 2.5,
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          'সেশন পরীক্ষা করা হচ্ছে...',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
