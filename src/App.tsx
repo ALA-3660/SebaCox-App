@@ -34,7 +34,7 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-black tracking-tight text-slate-900">SebaCox (সেবাকক্স)</h1>
                 <span className="text-[11px] font-bold bg-teal-50 text-teal-800 px-2 py-0.5 rounded-full border border-teal-200">
-                  Phase 2 — Authentication & Identity Foundation
+                  Phase 4 — Category & Service Foundation
                 </span>
               </div>
               <p className="text-xs text-teal-800 font-medium">
@@ -46,7 +46,7 @@ export default function App() {
           <div className="flex items-center gap-2 text-xs">
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 font-medium">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>API: /api/v1/health/ Live</span>
+              <span>46 Master Taxonomy Modules • Live</span>
             </div>
             <span className="text-slate-400">|</span>
             <span className="text-slate-500 font-medium">Cox's Bazar, Bangladesh</span>
@@ -220,7 +220,7 @@ flutter run -d chrome`}
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-4 px-6 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>SebaCox • লোকেশন-ভিত্তিক মাল্টি-সার্ভিস প্ল্যাটফর্ম • Phase 1 Foundation Completed</span>
+          <span>SebaCox • লোকেশন ও ক্যাটাগরি-ভিত্তিক মাল্টি-সার্ভিস প্ল্যাটফর্ম • Phase 1–4 Verified (107 Tests)</span>
           <span className="font-medium text-slate-700">“মানুষের প্রয়োজন থেকে সেবার সমাধান।”</span>
         </div>
       </footer>

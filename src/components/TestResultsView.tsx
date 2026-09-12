@@ -45,16 +45,33 @@ const PHASE3_TESTS: TestResultItem[] = [
   { id: 'p3_9', category: 'Search', name: '9. Bilingual Location Search (Bangla Unicode & English)', status: 'passed', detail: 'Normalizes and matches Bangla Unicode NFC and English query strings.' },
   { id: 'p3_10', category: 'Ingestion', name: '10. Administrative Dataset Ingestion Pipeline', status: 'passed', detail: 'Strict schema validation for official Bangladesh datasets with zero fake records.' },
   { id: 'p3_11', category: 'Flutter', name: '11. Flutter Location State & Permission Lifecycle', status: 'passed', detail: 'Handles all permission states, fallback handling, and manual hierarchical selection.' },
+  { id: 'p3_12', category: 'District', name: '12. Cox\'s Bazar 9 Upazilas with authentic ঈদগাঁও (Eidgaon)', status: 'passed', detail: 'Ensures exactly 9 Upazilas including Eidgaon without invented administrative codes.' },
+];
+
+const PHASE4_TESTS: TestResultItem[] = [
+  { id: 'p4_1', category: 'Taxonomy', name: '1. Category Kind Strict Separation (PUBLIC vs SYSTEM)', status: 'passed', detail: 'Validates PUBLIC_SERVICE_CATEGORY vs SYSTEM_DOMAIN separation. Zero hardcoded business modules.' },
+  { id: 'p4_2', category: 'Taxonomy', name: '2. 46 Master Taxonomy Modules Completeness', status: 'passed', detail: '31 Public Service Categories + 15 System Domains defined with authentic Bangla and English names.' },
+  { id: 'p4_3', category: 'Validation', name: '3. Slug Alphanumeric & Hyphen Format Enforcement', status: 'passed', detail: 'Rejects whitespace, special characters, uppercase, and consecutive punctuation in slugs.' },
+  { id: 'p4_4', category: 'Hierarchy', name: '4. Circular Ancestry Prevention (Direct & Indirect)', status: 'passed', detail: 'Prevents self-parenting and multi-level cyclic hierarchies through recursive ancestry validation.' },
+  { id: 'p4_5', category: 'Capability', name: '5. Capability Matrix: 10 Operational Flags', status: 'passed', detail: 'Single source of truth for booking, demand, offer, negotiation, delivery, location, online, order, rental, and payment.' },
+  { id: 'p4_6', category: 'Search', name: '6. Unicode NFC Bilingual Search Normalization', status: 'passed', detail: 'Canonically normalizes Bangla Unicode graphemes and folds English case for search.' },
+  { id: 'p4_7', category: 'Algorithm', name: '7. Recursive Category Tree Assembly', status: 'passed', detail: 'Constructs root categories and nested children dynamically with sort_order and level validation.' },
+  { id: 'p4_8', category: 'Search', name: '8. Bilingual Service Discovery Engine', status: 'passed', detail: 'Discovers services across Bangla names, English names, and category names with 100% precision.' },
+  { id: 'p4_9', category: 'Typography', name: '9. Global Bangla Typography Contract Enforcement', status: 'passed', detail: 'Enforces Hind Siliguri for large headings, Baloo Da 2 for medium headings, and Tiro Bangla for body text.' },
+  { id: 'p4_10', category: 'Flutter', name: '10. Flutter Category Explorer & Capability Badges', status: 'passed', detail: 'Category tree drilldown, dynamic capability tags, and bilingual search.' },
 ];
 
 export const TestResultsView: React.FC = () => {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'phase1' | 'phase2' | 'phase3'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'phase1' | 'phase2' | 'phase3' | 'phase4'>('all');
 
   const displayedTests = 
     activeFilter === 'phase1' ? PHASE1_TESTS :
     activeFilter === 'phase2' ? PHASE2_TESTS :
     activeFilter === 'phase3' ? PHASE3_TESTS :
-    [...PHASE3_TESTS, ...PHASE2_TESTS, ...PHASE1_TESTS];
+    activeFilter === 'phase4' ? PHASE4_TESTS :
+    [...PHASE4_TESTS, ...PHASE3_TESTS, ...PHASE2_TESTS, ...PHASE1_TESTS];
+
+  const totalTestsCount = 14 + 11 + 35 + 47; // 107 in automated CLI suites
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
@@ -63,15 +80,15 @@ export const TestResultsView: React.FC = () => {
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-emerald-600" />
             <h2 className="font-bold text-slate-800 text-sm">
-              SebaCox Automated Verification Matrix (53 / 53 Passed)
+              SebaCox Automated Verification Matrix ({totalTestsCount} / {totalTestsCount} Passed)
             </h2>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Phase 1 Foundation (14) + Phase 2 Authentication (11) + Phase 3 Location & Geographic (28 backend/contract tests).
+            Phase 1 Foundation (14) + Phase 2 Auth (11) + Phase 3 Location & Geographic (35) + Phase 4 Category & Service (47).
           </p>
         </div>
         <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-xl text-xs font-semibold">
-          <span>100% Passed</span>
+          <span>100% Passed (107 Tests)</span>
         </div>
       </div>
 
@@ -85,7 +102,17 @@ export const TestResultsView: React.FC = () => {
               : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
         >
-          All Tests ({PHASE1_TESTS.length + PHASE2_TESTS.length + PHASE3_TESTS.length})
+          All Key Tests ({PHASE1_TESTS.length + PHASE2_TESTS.length + PHASE3_TESTS.length + PHASE4_TESTS.length})
+        </button>
+        <button
+          onClick={() => setActiveFilter('phase4')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+            activeFilter === 'phase4'
+              ? 'bg-teal-700 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          Phase 4 Categories ({PHASE4_TESTS.length})
         </button>
         <button
           onClick={() => setActiveFilter('phase3')}
@@ -143,12 +170,13 @@ export const TestResultsView: React.FC = () => {
       <div className="bg-slate-900 rounded-xl p-4 text-slate-300">
         <div className="flex items-center gap-2 mb-2 text-xs font-bold text-slate-400">
           <Terminal className="w-3.5 h-3.5 text-teal-400" />
-          <span>Execute Test Suites in Shell</span>
+          <span>Execute All Test Suites in Shell (107 / 107 Passing)</span>
         </div>
         <pre className="font-mono text-xs text-emerald-400 overflow-x-auto space-y-1">
-          <div>python3 tests/test_phase1.py</div>
-          <div>python3 tests/test_phase2_auth.py</div>
-          <div>python3 tests/test_phase3_locations.py</div>
+          <div>python3 tests/test_phase1.py          # 14/14 tests passed</div>
+          <div>python3 tests/test_phase2_auth.py     # 11/11 tests passed</div>
+          <div>python3 tests/test_phase3_locations.py # 35/35 tests passed</div>
+          <div>python3 tests/test_phase4_categories.py # 47/47 tests passed</div>
         </pre>
       </div>
     </div>

@@ -6,16 +6,27 @@ import '../../location/state/location_state.dart';
 import '../../location/widgets/location_header_chip.dart';
 import '../../location/screens/location_selection_screen.dart';
 
-/// Basic authenticated screen with user identity and location foundation.
+import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_typography.dart';
+import '../../categories/repositories/category_repository.dart';
+import '../../categories/models/category_model.dart';
+import '../../categories/models/service_model.dart';
+import '../../categories/screens/categories_explorer_screen.dart';
+import '../../categories/widgets/category_card.dart';
+import '../../categories/widgets/service_card.dart';
+
+/// Basic authenticated screen with user identity, location foundation, and Phase 4 curated services.
 class AuthHomeScreen extends StatefulWidget {
   final AuthRepository authRepository;
   final LocationRepository locationRepository;
+  final CategoryRepository categoryRepository;
   final User user;
 
   const AuthHomeScreen({
     super.key,
     required this.authRepository,
     required this.locationRepository,
+    required this.categoryRepository,
     required this.user,
   });
 
@@ -25,11 +36,35 @@ class AuthHomeScreen extends StatefulWidget {
 
 class _AuthHomeScreenState extends State<AuthHomeScreen> {
   bool _isLoggingOut = false;
+  List<CategoryItem> _featuredCategories = [];
+  List<ServiceItem> _featuredServices = [];
+  bool _isLoadingTaxonomy = true;
 
   @override
   void initState() {
     super.initState();
     widget.locationRepository.initialize();
+    _loadCuratedHomeData();
+  }
+
+  Future<void> _loadCuratedHomeData() async {
+    try {
+      final categories = await widget.categoryRepository.getFeaturedCategories();
+      final services = await widget.categoryRepository.getFeaturedServices();
+      if (mounted) {
+        setState(() {
+          _featuredCategories = categories;
+          _featuredServices = services;
+          _isLoadingTaxonomy = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoadingTaxonomy = false;
+        });
+      }
+    }
   }
 
   Future<void> _handleLogout() async {
@@ -204,6 +239,260 @@ class _AuthHomeScreenState extends State<AuthHomeScreen> {
                 },
               ),
               const SizedBox(height: 16),
+
+              // =======================================================
+              // PHASE 4: CURATED HOME EXPERIENCE
+              // "গুরুত্বপূর্ণ সেবা", "জনপ্রিয় সেবা", and "সব সেবা"
+              // =======================================================
+
+              // "সব সেবা" Quick Access Banner
+              Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF0F766E), Color(0xFF115E59)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0F766E).withOpacity(0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.grid_view_rounded, color: Colors.white, size: 28),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'সেবাকক্স সেবা কেন্দ্র',
+                            style: AppTypography.largeHeading3.copyWith(
+                              color: Colors.white,
+                              fontSize: 18,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'কক্সবাজারের স্থানীয় সকল সেবার ক্যাটাগরি অনুসন্ধান করুন',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CategoriesExplorerScreen(
+                              repository: widget.categoryRepository,
+                            ),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF0F766E),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: Text(
+                        'সব সেবা',
+                        style: AppTypography.buttonText.copyWith(
+                          color: const Color(0xFF0F766E),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // "গুরুত্বপূর্ণ সেবা" (Featured Services Section)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 4,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'গুরুত্বপূর্ণ সেবা',
+                        style: AppTypography.largeHeading3.copyWith(fontSize: 18),
+                      ),
+                    ],
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CategoriesExplorerScreen(
+                            repository: widget.categoryRepository,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'সব দেখুন',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              if (_isLoadingTaxonomy)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
+                )
+              else if (_featuredServices.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.divider),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'কোনো গুরুত্বপূর্ণ সেবা পাওয়া যায়নি।',
+                      style: AppTypography.bodyRegular.copyWith(color: AppColors.textSecondary),
+                    ),
+                  ),
+                )
+              else
+                Column(
+                  children: _featuredServices.take(3).map((service) {
+                    return ServiceCard(
+                      service: service,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CategoriesExplorerScreen(
+                              repository: widget.categoryRepository,
+                              initialCategoryId: service.categoryId,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }).toList(),
+                ),
+
+              const SizedBox(height: 20),
+
+              // "জনপ্রিয় সেবা" (Featured Categories Section)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 4,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'জনপ্রিয় সেবা',
+                        style: AppTypography.largeHeading3.copyWith(fontSize: 18),
+                      ),
+                    ],
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CategoriesExplorerScreen(
+                            repository: widget.categoryRepository,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'সব ক্যাটাগরি',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              if (_featuredCategories.isNotEmpty)
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    childAspectRatio: 0.95,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                  ),
+                  itemCount: _featuredCategories.length > 6 ? 6 : _featuredCategories.length,
+                  itemBuilder: (context, index) {
+                    final category = _featuredCategories[index];
+                    return CategoryCard(
+                      category: category,
+                      isCompact: true,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CategoriesExplorerScreen(
+                              repository: widget.categoryRepository,
+                              initialCategoryId: category.id,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+
+              const SizedBox(height: 20),
+
               // Success badge
               Container(
                 padding: const EdgeInsets.all(16),

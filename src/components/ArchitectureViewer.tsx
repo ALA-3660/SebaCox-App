@@ -108,6 +108,44 @@ export const ArchitectureViewer: React.FC = () => {
             </div>
           </div>
         </div>
+        {/* Card 6: Category & Service Engine Foundation */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs md:col-span-2 lg:col-span-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700">
+              <Layers className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-800 text-sm">Phase 4 — Universal Category & Service Foundation</h3>
+              <p className="text-xs text-slate-500">“মানুষের প্রয়োজন থেকে সেবার সমাধান — কোনো হার্ডকোডেড বিজনেস মডিউল নয়।”</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mt-3 text-xs">
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+              <span className="font-bold text-teal-800">1. Taxonomy Separation</span>
+              <p className="text-slate-600 text-[11px]">
+                Strict division between <code>PUBLIC_SERVICE_CATEGORY</code> (31 public categories) and <code>SYSTEM_DOMAIN</code> (15 operational domains). Recursive parent-child tree.
+              </p>
+            </div>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+              <span className="font-bold text-teal-800">2. Single Source of Truth</span>
+              <p className="text-slate-600 text-[11px]">
+                Service model acts as single capability authority: 10 operational flags drive dynamic frontend workflows (booking, demand, offer, negotiation, delivery, etc.).
+              </p>
+            </div>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+              <span className="font-bold text-teal-800">3. Integrity & Circular Defense</span>
+              <p className="text-slate-600 text-[11px]">
+                Strict slug validation (alphanumeric & hyphens) and recursive graph cycle detection preventing direct self-parenting and transitive circular loops.
+              </p>
+            </div>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+              <span className="font-bold text-teal-800">4. Global Bangla Typography</span>
+              <p className="text-slate-600 text-[11px]">
+                Hind Siliguri for large headings, Baloo Da 2 for medium headings, and Tiro Bangla for body text across all screens and cards.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Auth Data Flow Diagram */}

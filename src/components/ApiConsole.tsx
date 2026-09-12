@@ -111,7 +111,47 @@ const PRESETS: Preset[] = [
     endpoint: '/api/v1/locations/service-areas/',
   },
   {
-    name: '18. Invalid Route (Standard 404)',
+    name: '18. Categories: All Active List',
+    method: 'GET',
+    endpoint: '/api/v1/categories/',
+  },
+  {
+    name: '19. Categories: Recursive Tree (Public)',
+    method: 'GET',
+    endpoint: '/api/v1/categories/tree/?kind=PUBLIC_SERVICE_CATEGORY',
+  },
+  {
+    name: '20. Categories: Featured',
+    method: 'GET',
+    endpoint: '/api/v1/categories/featured/',
+  },
+  {
+    name: '21. Categories: System Domains',
+    method: 'GET',
+    endpoint: '/api/v1/categories/?kind=SYSTEM_DOMAIN',
+  },
+  {
+    name: '22. Services: All Services',
+    method: 'GET',
+    endpoint: '/api/v1/services/',
+  },
+  {
+    name: '23. Services: Featured Services',
+    method: 'GET',
+    endpoint: '/api/v1/services/featured/',
+  },
+  {
+    name: '24. Services: Search ("ডাক্তার" / "bricks")',
+    method: 'GET',
+    endpoint: '/api/v1/services/search/?q=ডাক্তার',
+  },
+  {
+    name: '25. Services: By Category (Tourism & Travel)',
+    method: 'GET',
+    endpoint: '/api/v1/services/by-category/1/',
+  },
+  {
+    name: '26. Invalid Route (Standard 404)',
     method: 'GET',
     endpoint: '/api/v1/invalid-route/',
   },

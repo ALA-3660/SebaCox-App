@@ -13,7 +13,7 @@ export type ConnectionState = 'loading' | 'success' | 'failure';
 
 export interface TestResultItem {
   id: string;
-  category: 'Backend' | 'Flutter' | 'Security' | 'Auth' | 'Architecture' | 'Geospatial' | 'Hierarchy' | 'ServiceArea' | 'Search' | 'Ingestion';
+  category: 'Backend' | 'Flutter' | 'Security' | 'Auth' | 'Architecture' | 'Geospatial' | 'Hierarchy' | 'ServiceArea' | 'Search' | 'Ingestion' | 'Taxonomy' | 'Validation' | 'Capability' | 'Algorithm' | 'Typography' | 'District';
   name: string;
   status: 'passed' | 'failed';
   detail: string;

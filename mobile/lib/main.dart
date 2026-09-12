@@ -12,6 +12,9 @@ import 'features/location/repositories/location_repository.dart';
 import 'features/location/services/device_location_service.dart';
 import 'features/location/services/location_api_service.dart';
 
+import 'features/categories/repositories/category_repository.dart';
+import 'features/categories/services/category_api_service.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -32,20 +35,26 @@ void main() {
     deviceService: deviceLocationService,
   );
 
+  final categoryApiService = CategoryApiService(apiClient);
+  final categoryRepository = CategoryRepository(categoryApiService);
+
   runApp(SebaCoxApp(
     authRepository: authRepository,
     locationRepository: locationRepository,
+    categoryRepository: categoryRepository,
   ));
 }
 
 class SebaCoxApp extends StatefulWidget {
   final AuthRepository authRepository;
   final LocationRepository locationRepository;
+  final CategoryRepository categoryRepository;
 
   const SebaCoxApp({
     super.key,
     required this.authRepository,
     required this.locationRepository,
+    required this.categoryRepository,
   });
 
   @override
@@ -101,6 +110,7 @@ class _SebaCoxAppState extends State<SebaCoxApp> {
               return AuthHomeScreen(
                 authRepository: widget.authRepository,
                 locationRepository: widget.locationRepository,
+                categoryRepository: widget.categoryRepository,
                 user: authState.user!,
               );
 

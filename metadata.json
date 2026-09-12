@@ -1,6 +1,6 @@
 {
   "name": "SebaCox",
-  "description": "SebaCox multi-service platform: Phase 1 Foundation, Phase 2 Authentication, and Phase 3 Location & Geographic Foundation with SRID 4326 coordinates, Bangladesh administrative hierarchy, separate GPS vs Service Area contexts, and Flutter integration.",
+  "description": "SebaCox multi-service platform: Phase 1 Foundation, Phase 2 Authentication, Phase 3 Location & Geographic Foundation, and Phase 4 Category & Service Foundation with 46 master taxonomy modules, capability matrix, and global Bangla typography.",
   "requestFramePermissions": [
     "geolocation"
   ],
