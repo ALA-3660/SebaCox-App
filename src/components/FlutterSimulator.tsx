@@ -20,11 +20,42 @@ import {
   ArrowLeft,
   Compass,
   Check,
-  Type
+  Type,
+  Grid,
+  Layers,
+  Home,
+  Package,
+  Activity,
+  Ticket,
+  Truck,
+  Coffee,
+  Wrench,
+  Anchor,
+  AlertTriangle,
+  Book,
+  Monitor,
+  DollarSign,
+  Briefcase,
+  X,
+  SlidersHorizontal,
+  Info,
+  Calendar,
+  CreditCard,
+  MessageCircle,
+  HelpCircle,
+  ShoppingBag,
+  ExternalLink,
+  Building2
 } from 'lucide-react';
 import { StandardApiResponse } from '../types';
+import { 
+  INITIAL_46_TAXONOMY_CATEGORIES, 
+  INITIAL_SERVICES, 
+  MockCategory, 
+  MockService 
+} from '../data/taxonomyMockData';
 
-type FlutterScreen = 'auth' | 'otp' | 'home' | 'location' | 'health';
+type FlutterScreen = 'auth' | 'otp' | 'home' | 'location' | 'categories' | 'health';
 type AuthMode = 'login' | 'register';
 
 interface SelectedArea {

@@ -12,6 +12,8 @@ api_v1_patterns = [
     path('health/', HealthCheckView.as_view(), name='api-v1-health'),
     path('auth/', include('apps.authentication.urls', namespace='auth')),
     path('locations/', include('apps.locations.urls', namespace='locations')),
+    path('categories/', include('apps.categories.urls', namespace='categories')),
+    path('services/', include('apps.categories.urls_services', namespace='services')),
 ]
 
 urlpatterns = [

@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
+import { INITIAL_46_TAXONOMY_CATEGORIES, INITIAL_SERVICES } from './src/data/taxonomyMockData';
 
 export default defineConfig(() => {
   return {
@@ -550,6 +551,206 @@ export default defineConfig(() => {
                   upazila: "কক্সবাজার সদর"
                 },
                 message: 'রিভার্স জিওকোডিং সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // ==========================================
+            // PHASE 4: CATEGORY & SERVICE API ENDPOINTS
+            // ==========================================
+
+            // Categories list & filters
+            if (pathname === '/api/v1/categories' && req.method === 'GET') {
+              const url = new URL(req.url, 'http://localhost');
+              const kind = url.searchParams.get('kind');
+              const level = url.searchParams.get('level');
+              const parent = url.searchParams.get('parent');
+              const isFeatured = url.searchParams.get('is_featured');
+
+              let filtered = [...INITIAL_46_TAXONOMY_CATEGORIES];
+              if (kind) {
+                filtered = filtered.filter(c => c.kind === kind);
+              }
+              if (level !== null && level !== undefined) {
+                filtered = filtered.filter(c => c.level === parseInt(level, 10));
+              }
+              if (parent !== null && parent !== undefined) {
+                filtered = filtered.filter(c => c.parent_id === parseInt(parent, 10));
+              }
+              if (isFeatured === 'true') {
+                filtered = filtered.filter(c => c.is_featured);
+              }
+
+              res.end(JSON.stringify({
+                success: true,
+                data: filtered,
+                message: 'ক্যাটাগরি তালিকা প্রাপ্তি সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // Categories tree
+            if (pathname === '/api/v1/categories/tree' && req.method === 'GET') {
+              const url = new URL(req.url, 'http://localhost');
+              const kind = url.searchParams.get('kind') || 'PUBLIC_SERVICE_CATEGORY';
+
+              const rootCategories = INITIAL_46_TAXONOMY_CATEGORIES
+                .filter(c => c.kind === kind && c.parent_id === null)
+                .map(root => ({
+                  ...root,
+                  children: INITIAL_46_TAXONOMY_CATEGORIES.filter(c => c.parent_id === root.id)
+                }));
+
+              res.end(JSON.stringify({
+                success: true,
+                data: rootCategories,
+                message: 'ক্যাটাগরি ট্রি প্রাপ্তি সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // Featured categories
+            if (pathname === '/api/v1/categories/featured' && req.method === 'GET') {
+              const featured = INITIAL_46_TAXONOMY_CATEGORIES.filter(c => c.is_featured && c.kind === 'PUBLIC_SERVICE_CATEGORY');
+              res.end(JSON.stringify({
+                success: true,
+                data: featured,
+                message: 'জনপ্রিয় ক্যাটাগরি তালিকা প্রাপ্তি সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // Category children
+            const catChildrenMatch = pathname.match(/^\/api\/v1\/categories\/(\d+)\/children$/);
+            if (catChildrenMatch && req.method === 'GET') {
+              const parentId = parseInt(catChildrenMatch[1], 10);
+              const children = INITIAL_46_TAXONOMY_CATEGORIES.filter(c => c.parent_id === parentId);
+              res.end(JSON.stringify({
+                success: true,
+                data: children,
+                message: 'সাব-ক্যাটাগরি তালিকা প্রাপ্তি সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // Single category detail
+            const catDetailMatch = pathname.match(/^\/api\/v1\/categories\/(\d+)$/);
+            if (catDetailMatch && req.method === 'GET') {
+              const id = parseInt(catDetailMatch[1], 10);
+              const cat = INITIAL_46_TAXONOMY_CATEGORIES.find(c => c.id === id);
+              if (!cat) {
+                res.statusCode = 404;
+                res.end(JSON.stringify({
+                  success: false,
+                  data: null,
+                  message: 'ক্যাটাগরি পাওয়া যায়নি।'
+                }));
+                return;
+              }
+              res.end(JSON.stringify({
+                success: true,
+                data: cat,
+                message: 'ক্যাটাগরি বিবরণ প্রাপ্তি সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // Services list & filters
+            if (pathname === '/api/v1/services' && req.method === 'GET') {
+              const url = new URL(req.url, 'http://localhost');
+              const categoryId = url.searchParams.get('category');
+              const serviceType = url.searchParams.get('service_type');
+              const isFeatured = url.searchParams.get('is_featured');
+
+              let filtered = [...INITIAL_SERVICES];
+              if (categoryId) {
+                filtered = filtered.filter(s => s.category_id === parseInt(categoryId, 10));
+              }
+              if (serviceType) {
+                filtered = filtered.filter(s => s.service_type === serviceType);
+              }
+              if (isFeatured === 'true') {
+                filtered = filtered.filter(s => s.is_featured);
+              }
+
+              res.end(JSON.stringify({
+                success: true,
+                data: filtered,
+                message: 'সেবা তালিকা প্রাপ্তি সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // Featured services
+            if (pathname === '/api/v1/services/featured' && req.method === 'GET') {
+              const featured = INITIAL_SERVICES.filter(s => s.is_featured);
+              res.end(JSON.stringify({
+                success: true,
+                data: featured,
+                message: 'গুরুত্বপূর্ণ সেবা তালিকা প্রাপ্তি সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // Search services (Bangla & English)
+            if (pathname === '/api/v1/services/search' && req.method === 'GET') {
+              const url = new URL(req.url, 'http://localhost');
+              const q = (url.searchParams.get('q') || '').trim().toLowerCase();
+              const categoryId = url.searchParams.get('category_id');
+
+              let results = INITIAL_SERVICES.filter(s => {
+                const matchNameBn = s.name_bn.toLowerCase().includes(q);
+                const matchNameEn = s.name_en.toLowerCase().includes(q);
+                const matchDescBn = s.short_description_bn.toLowerCase().includes(q);
+                const matchDescEn = s.short_description_en.toLowerCase().includes(q);
+                const matchCatBn = s.category_name_bn.toLowerCase().includes(q);
+                const matchCatEn = s.category_name_en.toLowerCase().includes(q);
+                return matchNameBn || matchNameEn || matchDescBn || matchDescEn || matchCatBn || matchCatEn;
+              });
+
+              if (categoryId) {
+                results = results.filter(s => s.category_id === parseInt(categoryId, 10));
+              }
+
+              res.end(JSON.stringify({
+                success: true,
+                data: results,
+                message: 'অনুসন্ধান ফলাফল প্রাপ্তি সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // Services by category
+            const servByCatMatch = pathname.match(/^\/api\/v1\/services\/by-category\/(\d+)$/);
+            if (servByCatMatch && req.method === 'GET') {
+              const catId = parseInt(servByCatMatch[1], 10);
+              const services = INITIAL_SERVICES.filter(s => s.category_id === catId);
+              res.end(JSON.stringify({
+                success: true,
+                data: services,
+                message: 'ক্যাটাগরিভিত্তিক সেবা তালিকা প্রাপ্তি সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // Single service detail
+            const servDetailMatch = pathname.match(/^\/api\/v1\/services\/(\d+)$/);
+            if (servDetailMatch && req.method === 'GET') {
+              const id = parseInt(servDetailMatch[1], 10);
+              const service = INITIAL_SERVICES.find(s => s.id === id);
+              if (!service) {
+                res.statusCode = 404;
+                res.end(JSON.stringify({
+                  success: false,
+                  data: null,
+                  message: 'সেবা পাওয়া যায়নি।'
+                }));
+                return;
+              }
+              res.end(JSON.stringify({
+                success: true,
+                data: service,
+                message: 'সেবা বিবরণ প্রাপ্তি সফল হয়েছে।'
               }));
               return;
             }

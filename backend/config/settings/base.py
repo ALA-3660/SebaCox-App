@@ -47,6 +47,7 @@ LOCAL_APPS = [
     'common',
     'apps.authentication',
     'apps.locations',
+    'apps.categories',
 ]
 
 # Custom User Model for SebaCox
