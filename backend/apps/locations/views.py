@@ -1,6 +1,7 @@
 """
 REST API Views for SebaCox Location & Geographic Engine.
-"মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+"প্রয়োজন থেকে সমাধান- এক অ্যাপেই"
+"খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই"
 """
 from rest_framework import views, status, permissions
 from common.responses import StandardResponse

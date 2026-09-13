@@ -1,6 +1,7 @@
 """
 Base Django Settings for SebaCox.
-"মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+"প্রয়োজন থেকে সমাধান- এক অ্যাপেই"
+"খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই"
 
 Shared configuration across development, staging, and production.
 """
@@ -48,6 +49,8 @@ LOCAL_APPS = [
     'apps.authentication',
     'apps.locations',
     'apps.categories',
+    'apps.providers',
+    'apps.demands',
 ]
 
 # Custom User Model for SebaCox

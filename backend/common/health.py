@@ -1,6 +1,7 @@
 """
 Health Check View for SebaCox API v1.
-"মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+"প্রয়োজন থেকে সমাধান- এক অ্যাপেই"
+"খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই"
 
 GET /api/v1/health/
 Returns standard response indicating service operational state without leaking sensitive infrastructure details.

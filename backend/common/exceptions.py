@@ -1,6 +1,7 @@
 """
 Custom Unified Exception Handler for SebaCox REST API.
-"মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+"প্রয়োজন থেকে সমাধান- এক অ্যাপেই"
+"খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই"
 
 Ensures all exceptions (validation, 401, 403, 404, 500) return the standard JSON structure:
 {

@@ -1,6 +1,7 @@
 """
 URLs for Category API endpoints.
-"মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+"প্রয়োজন থেকে সমাধান- এক অ্যাপেই"
+"খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই"
 """
 from django.urls import path
 from .views import (

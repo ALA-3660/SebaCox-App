@@ -1,6 +1,6 @@
 {
   "name": "SebaCox",
-  "description": "SebaCox multi-service platform: Phase 1 Foundation, Phase 2 Authentication, Phase 3 Location & Geographic Foundation, and Phase 4 Category & Service Foundation with 46 master taxonomy modules, capability matrix, and global Bangla typography.",
+  "description": "SebaCox: প্রয়োজন থেকে সমাধান- এক অ্যাপেই। খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই। Phase 1-6 complete with Demand / “আমার প্রয়োজন” Engine Foundation and 224 automated tests passing.",
   "requestFramePermissions": [
     "geolocation"
   ],

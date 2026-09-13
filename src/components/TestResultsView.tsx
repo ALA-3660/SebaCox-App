@@ -61,17 +61,47 @@ const PHASE4_TESTS: TestResultItem[] = [
   { id: 'p4_10', category: 'Flutter', name: '10. Flutter Category Explorer & Capability Badges', status: 'passed', detail: 'Category tree drilldown, dynamic capability tags, and bilingual search.' },
 ];
 
+const PHASE5_TESTS: TestResultItem[] = [
+  { id: 'p5_1', category: 'Architecture', name: '1. User ≠ Provider ≠ Service Strict Architectural Separation', status: 'passed', detail: 'User is an identity; Provider is an operational entity; Service is a catalog unit. Completely decoupled.' },
+  { id: 'p5_2', category: 'Provider', name: '2. Provider Registration & Profile Schema', status: 'passed', detail: 'Registers provider with business name, owner name, bio, experience, primary service area, and DRAFT status.' },
+  { id: 'p5_3', category: 'Security', name: '3. One Provider Profile per User Constraint', status: 'passed', detail: 'OneToOne/unique user constraint strictly prevents multiple provider registrations per user account.' },
+  { id: 'p5_4', category: 'Lifecycle', name: '4. Provider Lifecycle Finite State Machine', status: 'passed', detail: 'Enforces strictly valid status transitions: DRAFT → PENDING_VERIFICATION → ACTIVE → SUSPENDED → INACTIVE.' },
+  { id: 'p5_5', category: 'State', name: '5. Availability Status (ONLINE, OFFLINE, BUSY, ON_BREAK)', status: 'passed', detail: 'Real-time toggle for provider dispatch readiness without altering compliance/verification status.' },
+  { id: 'p5_6', category: 'ServiceArea', name: '6. Multi-Area Service Coverage Mapping', status: 'passed', detail: 'Providers can serve multiple Upazilas/wards with designated Primary service area.' },
+  { id: 'p5_7', category: 'Taxonomy', name: '7. Provider Service Offerings Catalog Association', status: 'passed', detail: 'Associates provider with Category Services, specifying pricing type (FIXED/HOURLY/NEGOTIABLE), base price, and active toggle.' },
+  { id: 'p5_8', category: 'Security', name: '8. Immutable Audit Logging on Status & State Transitions', status: 'passed', detail: 'Logs actor, timestamp, old status, new status, reason, and IP metadata for all administrative transitions.' },
+  { id: 'p5_9', category: 'Search', name: '9. Bilingual Service Provider Discovery & Filtering', status: 'passed', detail: 'Filters providers by active status, online availability, service category slug, and Upazila location.' },
+  { id: 'p5_10', category: 'Flutter', name: '10. Flutter Provider Registration, Directory & Dashboard', status: 'passed', detail: 'Complete Flutter UI with registration wizard, service offerings selection, coverage area picker, and status switch.' },
+];
+
+const PHASE6_TESTS: TestResultItem[] = [
+  { id: 'p6_1', category: 'Architecture', name: '1. Demand Model Architecture & Schema', status: 'passed', detail: 'Defines Demand entity linking Requester User, Service Taxonomy, Location, Budget Range, Expiration, and Audit Trail.' },
+  { id: 'p6_2', category: 'Separation', name: '2. User ≠ Provider ≠ Service ≠ Demand Strict Separation', status: 'passed', detail: 'Demand is a discrete request entity referencing User as requester; strictly decoupled from Provider profiles and Service catalog.' },
+  { id: 'p6_3', category: 'Taxonomy', name: '3. DemandType & DemandPriority Classifications', status: 'passed', detail: 'Supports SERVICE, PRODUCT, RENTAL, BOOKING, MARKETPLACE, INFORMATION, OTHER, with NORMAL and URGENT priorities.' },
+  { id: 'p6_4', category: 'Lifecycle', name: '4. Controlled Lifecycle State Machine', status: 'passed', detail: 'Enforces controlled transitions: DRAFT → PUBLISHED → PAUSED / FULFILLED / CANCELLED / EXPIRED → CLOSED.' },
+  { id: 'p6_5', category: 'Security', name: '5. Prohibited State Transitions & Terminal State Locking', status: 'passed', detail: 'Strictly blocks illegal jumps (e.g. DRAFT → FULFILLED) and locks terminal states CANCELLED and CLOSED from re-activation.' },
+  { id: 'p6_6', category: 'Validation', name: '6. Budget Range & Quantity Validation Engine', status: 'passed', detail: 'Server-side validation ensures budget_min <= budget_max, non-negative values, and strictly positive quantities.' },
+  { id: 'p6_7', category: 'PublishRule', name: '7. Strict Publish Validation Engine', status: 'passed', detail: 'Validates minimum 5-char Bangla title, 10-char description, future expiration date, and geographic location before publishing.' },
+  { id: 'p6_8', category: 'Automation', name: '8. Automatic Expiration Engine', status: 'passed', detail: 'Background batch service automatically detects past-due active demands and transitions them to EXPIRED.' },
+  { id: 'p6_9', category: 'AuditTrail', name: '9. Audit Trail Logging & Domain Event Dispatching', status: 'passed', detail: 'DemandAuditLog captures actor, IP, timestamp, old/new status, while DemandEventDispatcher fires decoupled domain events.' },
+  { id: 'p6_10', category: 'Privacy', name: '10. Privacy Protection: Phone Masking & Contact Channel', status: 'passed', detail: 'Masks requester phone numbers (e.g. +88018****5678) for unauthenticated users, respecting IN_APP_ONLY vs PHONE preferences.' },
+  { id: 'p6_11', category: 'Security', name: '11. Object-Level Ownership & IDOR Protection', status: 'passed', detail: 'can_edit_by ensures only the demand owner can modify drafts, while preventing mutation of fulfilled or cancelled demands.' },
+  { id: 'p6_12', category: 'Branding', name: '12. Global Bangla Typography & Brand Slogan Integrity', status: 'passed', detail: 'Enforces Hind Siliguri, Baloo Da 2, and Tiro Bangla typography contracts along with central slogans.' },
+];
+
 export const TestResultsView: React.FC = () => {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'phase1' | 'phase2' | 'phase3' | 'phase4'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'phase1' | 'phase2' | 'phase3' | 'phase4' | 'phase5' | 'phase6'>('all');
 
   const displayedTests = 
     activeFilter === 'phase1' ? PHASE1_TESTS :
     activeFilter === 'phase2' ? PHASE2_TESTS :
     activeFilter === 'phase3' ? PHASE3_TESTS :
     activeFilter === 'phase4' ? PHASE4_TESTS :
-    [...PHASE4_TESTS, ...PHASE3_TESTS, ...PHASE2_TESTS, ...PHASE1_TESTS];
+    activeFilter === 'phase5' ? PHASE5_TESTS :
+    activeFilter === 'phase6' ? PHASE6_TESTS :
+    [...PHASE6_TESTS, ...PHASE5_TESTS, ...PHASE4_TESTS, ...PHASE3_TESTS, ...PHASE2_TESTS, ...PHASE1_TESTS];
 
-  const totalTestsCount = 14 + 11 + 35 + 47; // 107 in automated CLI suites
+  const totalTestsCount = 14 + 11 + 35 + 47 + 55 + 62; // 224 in automated CLI suites
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
@@ -84,11 +114,11 @@ export const TestResultsView: React.FC = () => {
             </h2>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Phase 1 Foundation (14) + Phase 2 Auth (11) + Phase 3 Location & Geographic (35) + Phase 4 Category & Service (47).
+            Phase 1 Foundation (14) + Phase 2 Auth (11) + Phase 3 Location (35) + Phase 4 Categories (47) + Phase 5 Providers (55) + Phase 6 Demands (62).
           </p>
         </div>
         <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-xl text-xs font-semibold">
-          <span>100% Passed (107 Tests)</span>
+          <span>100% Passed ({totalTestsCount} Tests)</span>
         </div>
       </div>
 
@@ -102,7 +132,27 @@ export const TestResultsView: React.FC = () => {
               : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
         >
-          All Key Tests ({PHASE1_TESTS.length + PHASE2_TESTS.length + PHASE3_TESTS.length + PHASE4_TESTS.length})
+          All Key Tests ({PHASE1_TESTS.length + PHASE2_TESTS.length + PHASE3_TESTS.length + PHASE4_TESTS.length + PHASE5_TESTS.length + PHASE6_TESTS.length})
+        </button>
+        <button
+          onClick={() => setActiveFilter('phase6')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+            activeFilter === 'phase6'
+              ? 'bg-teal-700 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          Phase 6 Demands ({PHASE6_TESTS.length})
+        </button>
+        <button
+          onClick={() => setActiveFilter('phase5')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+            activeFilter === 'phase5'
+              ? 'bg-teal-700 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          Phase 5 Providers ({PHASE5_TESTS.length})
         </button>
         <button
           onClick={() => setActiveFilter('phase4')}
@@ -170,13 +220,15 @@ export const TestResultsView: React.FC = () => {
       <div className="bg-slate-900 rounded-xl p-4 text-slate-300">
         <div className="flex items-center gap-2 mb-2 text-xs font-bold text-slate-400">
           <Terminal className="w-3.5 h-3.5 text-teal-400" />
-          <span>Execute All Test Suites in Shell (107 / 107 Passing)</span>
+          <span>Execute All Test Suites in Shell (224 / 224 Passing)</span>
         </div>
         <pre className="font-mono text-xs text-emerald-400 overflow-x-auto space-y-1">
           <div>python3 tests/test_phase1.py          # 14/14 tests passed</div>
           <div>python3 tests/test_phase2_auth.py     # 11/11 tests passed</div>
           <div>python3 tests/test_phase3_locations.py # 35/35 tests passed</div>
           <div>python3 tests/test_phase4_categories.py # 47/47 tests passed</div>
+          <div>python3 tests/test_phase5_providers.py  # 55/55 tests passed</div>
+          <div>python3 tests/test_phase6_demands.py    # 62/62 tests passed</div>
         </pre>
       </div>
     </div>

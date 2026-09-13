@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Phase 2 Authentication Test Suite for SebaCox.
-“মানুষের প্রয়োজন থেকে সেবার সমাধান।”
+“প্রয়োজন থেকে সমাধান- এক অ্যাপেই”
+“খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই”
 
 Covers all Phase 2 Verification Requirements:
 1. Valid Bangladeshi phone accepts (017..., +8801..., 8801...)
@@ -116,7 +117,8 @@ def test(name, condition, error_msg=""):
 
 print("\n==========================================")
 print("SebaCox Phase 2 Authentication Verification")
-print("“মানুষের প্রয়োজন থেকে সেবার সমাধান।”")
+print("“প্রয়োজন থেকে সমাধান- এক অ্যাপেই”")
+print("“খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই”")
 print("==========================================\n")
 
 # -----------------------------------------------------------------------------

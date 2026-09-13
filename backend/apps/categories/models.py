@@ -1,7 +1,8 @@
 """
 Category & Service Models for SebaCox.
 Universal Service Taxonomy & Capability Engine.
-"মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+"প্রয়োজন থেকে সমাধান- এক অ্যাপেই"
+"খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই"
 """
 from django.db import models
 from django.core.exceptions import ValidationError

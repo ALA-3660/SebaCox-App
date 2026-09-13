@@ -1,7 +1,8 @@
 """
 Category & Service Domain Services.
 Universal Category Tree Builder, Bilingual Search Engine, and Taxonomy Seeder.
-"মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+"প্রয়োজন থেকে সমাধান- এক অ্যাপেই"
+"খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই"
 """
 import unicodedata
 from typing import List, Dict, Any, Optional

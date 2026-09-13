@@ -1,6 +1,7 @@
 # SebaCox System Architecture — Phase 1 Foundation
 
-> **Product Principle:** *“মানুষের প্রয়োজন থেকে সেবার সমাধান।”*  
+> **Product Principle:** *“প্রয়োজন থেকে সমাধান- এক অ্যাপেই”
+“খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই”*  
 > **Initial Target:** Cox's Bazar, Bangladesh (later expanding nationwide).
 
 ---

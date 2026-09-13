@@ -151,7 +151,56 @@ const PRESETS: Preset[] = [
     endpoint: '/api/v1/services/by-category/1/',
   },
   {
-    name: '26. Invalid Route (Standard 404)',
+    name: '26. Demands: List Published Needs (Phase 6)',
+    method: 'GET',
+    endpoint: '/api/v1/demands/',
+  },
+  {
+    name: '27. Demands: Search by Bangla Query & Upazila',
+    method: 'GET',
+    endpoint: '/api/v1/demands/?q=ইলেকট্রিশিয়ান&upazila_id=1',
+  },
+  {
+    name: '28. Demands: Create Demand (Draft or Publish)',
+    method: 'POST',
+    endpoint: '/api/v1/demands/',
+    body: JSON.stringify({
+      title_bn: 'কক্সবাজার সদরে অভিজ্ঞ ইলেকট্রিশিয়ান প্রয়োজন',
+      description_bn: 'বাসার মূল সার্কিট ব্রেকার মেরামত ও ওয়্যারিং চেক করার জন্য জরুরি প্রয়োজন।',
+      demand_type: 'SERVICE',
+      priority: 'URGENT',
+      upazila_id: 1,
+      location_display_bn: 'কলাতলী রোড, কক্সবাজার সদর',
+      budget_min: 800,
+      budget_max: 1500,
+      publish_now: true,
+      contact_preference: 'BOTH'
+    }, null, 2),
+  },
+  {
+    name: '29. Demands: Detail & Privacy Masking',
+    method: 'GET',
+    endpoint: '/api/v1/demands/1/',
+  },
+  {
+    name: '30. Demands: Publish Draft',
+    method: 'POST',
+    endpoint: '/api/v1/demands/1/publish/',
+    body: JSON.stringify({ reason: 'প্রকাশের জন্য প্রস্তুত' }, null, 2),
+  },
+  {
+    name: '31. Demands: Fulfill Need',
+    method: 'POST',
+    endpoint: '/api/v1/demands/1/fulfill/',
+    body: JSON.stringify({ reason: 'সেবা সফলভাবে পাওয়া গেছে' }, null, 2),
+  },
+  {
+    name: '32. Demands: My Demands (Owner View)',
+    method: 'GET',
+    endpoint: '/api/v1/demands/my-demands/',
+  },
+  {
+    name: '33. Invalid Route (Standard 404)',
     method: 'GET',
     endpoint: '/api/v1/invalid-route/',
   },

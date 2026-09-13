@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
 import { INITIAL_46_TAXONOMY_CATEGORIES, INITIAL_SERVICES } from './src/data/taxonomyMockData';
+import { INITIAL_MOCK_DEMANDS, MockDemand } from './src/data/demandMockData';
 
 export default defineConfig(() => {
   return {
@@ -16,6 +17,7 @@ export default defineConfig(() => {
           const users = new Map();
           const otps = new Map();
           const activeSessions = new Map();
+          const demandsStore = [...INITIAL_MOCK_DEMANDS];
           let nextUserId = 101;
 
           // Normalize BD mobile helper
@@ -751,6 +753,174 @@ export default defineConfig(() => {
                 success: true,
                 data: service,
                 message: 'সেবা বিবরণ প্রাপ্তি সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // ==========================================
+            // PHASE 6 DEMAND ENGINE ENDPOINTS
+            // ==========================================
+            // List / Filter Demands
+            if (pathname === '/api/v1/demands' && req.method === 'GET') {
+              const urlObj = new URL(req.url, 'http://localhost');
+              const q = (urlObj.searchParams.get('q') || '').toLowerCase().trim();
+              const upazilaId = urlObj.searchParams.get('upazila_id');
+              const demandType = urlObj.searchParams.get('demand_type');
+              const priority = urlObj.searchParams.get('priority');
+
+              let results = demandsStore.filter((d: any) => d.status === 'PUBLISHED');
+
+              if (q) {
+                results = results.filter((d: any) => 
+                  d.titleBn.toLowerCase().includes(q) || 
+                  d.titleEn.toLowerCase().includes(q) || 
+                  d.descriptionBn.toLowerCase().includes(q)
+                );
+              }
+              if (upazilaId) {
+                results = results.filter((d: any) => d.upazilaId === parseInt(upazilaId, 10));
+              }
+              if (demandType) {
+                results = results.filter((d: any) => d.demandType === demandType);
+              }
+              if (priority) {
+                results = results.filter((d: any) => d.priority === priority);
+              }
+
+              // Apply phone masking for public results
+              const safeResults = results.map((d: any) => ({
+                ...d,
+                contactPhone: d.contactPhone ? `${d.contactPhone.slice(0, 6)}****${d.contactPhone.slice(-4)}` : '',
+              }));
+
+              res.end(JSON.stringify({
+                success: true,
+                data: safeResults,
+                message: 'প্রয়োজনের তালিকা সফলভাবে প্রদান করা হয়েছে।'
+              }));
+              return;
+            }
+
+            // My Demands
+            if (pathname === '/api/v1/demands/my-demands' && req.method === 'GET') {
+              const myItems = demandsStore.filter((d: any) => d.isOwner || d.requesterId === 1);
+              res.end(JSON.stringify({
+                success: true,
+                data: myItems,
+                message: 'আপনার পোস্টকৃত চাহিদার তালিকা প্রাপ্তি সফল হয়েছে।'
+              }));
+              return;
+            }
+
+            // Create Demand
+            if (pathname === '/api/v1/demands' && req.method === 'POST') {
+              const body = await parseBody(req);
+              if (!body.title_bn || body.title_bn.trim().length < 5) {
+                res.statusCode = 400;
+                res.end(JSON.stringify({
+                  success: false,
+                  data: null,
+                  message: 'শিরোনাম কমপক্ষে ৫ অক্ষরের হতে হবে।',
+                  errors: { title_bn: ['শিরোনাম কমপক্ষে ৫ অক্ষরের হতে হবে।'] }
+                }));
+                return;
+              }
+              if (!body.description_bn || body.description_bn.trim().length < 10) {
+                res.statusCode = 400;
+                res.end(JSON.stringify({
+                  success: false,
+                  data: null,
+                  message: 'বিস্তারিত বিবরণ কমপক্ষে ১০ অক্ষরের হতে হবে।',
+                  errors: { description_bn: ['বিস্তারিত বিবরণ কমপক্ষে ১০ অক্ষরের হতে হবে।'] }
+                }));
+                return;
+              }
+
+              const newDemand: MockDemand = {
+                id: demandsStore.length + 1,
+                requesterId: 1,
+                requesterName: 'মোহাম্মদ করিম',
+                contactPhone: '+8801819234567',
+                titleBn: body.title_bn.trim(),
+                titleEn: body.title_bn.trim(),
+                descriptionBn: body.description_bn.trim(),
+                descriptionEn: body.description_bn.trim(),
+                demandType: body.demand_type || 'SERVICE',
+                status: (body.publish_now ? 'PUBLISHED' : 'DRAFT') as MockDemand['status'],
+                priority: body.priority || 'NORMAL',
+                budgetMin: body.budget_min ? Number(body.budget_min) : undefined,
+                budgetMax: body.budget_max ? Number(body.budget_max) : undefined,
+                currency: 'BDT',
+                upazilaId: body.upazila_id || 1,
+                upazilaNameBn: 'কক্সবাজার সদর',
+                locationDisplayBn: body.location_display_bn || 'কক্সবাজার সদর',
+                visibility: 'PUBLIC',
+                contactPreference: body.contact_preference || 'BOTH',
+                isOwner: true,
+                publishedAt: body.publish_now ? new Date().toISOString() : undefined,
+                createdAt: new Date().toISOString(),
+              };
+
+              demandsStore.unshift(newDemand);
+
+              res.statusCode = 201;
+              res.end(JSON.stringify({
+                success: true,
+                data: newDemand,
+                message: body.publish_now ? 'প্রয়োজন সফলভাবে প্রকাশ করা হয়েছে।' : 'প্রয়োজন খসড়া হিসেবে সংরক্ষিত হয়েছে।'
+              }));
+              return;
+            }
+
+            // Demand Actions (publish, pause, fulfill, cancel, resume)
+            const demandActionMatch = pathname.match(/^\/api\/v1\/demands\/(\d+)\/(publish|pause|resume|fulfill|cancel)$/);
+            if (demandActionMatch && req.method === 'POST') {
+              const dId = parseInt(demandActionMatch[1], 10);
+              const action = demandActionMatch[2];
+              const item = demandsStore.find((d: any) => d.id === dId);
+              if (!item) {
+                res.statusCode = 404;
+                res.end(JSON.stringify({ success: false, data: null, message: 'প্রয়োজন পাওয়া যায়নি।' }));
+                return;
+              }
+
+              const statusMap: Record<string, MockDemand['status']> = {
+                publish: 'PUBLISHED',
+                pause: 'PAUSED',
+                resume: 'PUBLISHED',
+                fulfill: 'FULFILLED',
+                cancel: 'CANCELLED',
+              };
+              if (statusMap[action]) {
+                item.status = statusMap[action];
+              }
+
+              res.end(JSON.stringify({
+                success: true,
+                data: item,
+                message: `প্রয়োজনের অবস্থা সফলভাবে পরিবর্তিত হয়েছে (${item.status})`
+              }));
+              return;
+            }
+
+            // Single Demand Detail
+            const demandDetailMatch = pathname.match(/^\/api\/v1\/demands\/(\d+)$/);
+            if (demandDetailMatch && req.method === 'GET') {
+              const dId = parseInt(demandDetailMatch[1], 10);
+              const item = demandsStore.find((d: any) => d.id === dId);
+              if (!item) {
+                res.statusCode = 404;
+                res.end(JSON.stringify({ success: false, data: null, message: 'প্রয়োজন পাওয়া যায়নি।' }));
+                return;
+              }
+              const respData = {
+                ...item,
+                contactPhone: item.isOwner ? item.contactPhone : `${item.contactPhone.slice(0, 6)}****${item.contactPhone.slice(-4)}`
+              };
+              res.end(JSON.stringify({
+                success: true,
+                data: respData,
+                message: 'প্রয়োজনের বিস্তারিত সফলভাবে প্রদান করা হয়েছে।'
               }));
               return;
             }

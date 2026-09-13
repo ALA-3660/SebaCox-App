@@ -1,6 +1,7 @@
 """
 Serializers for Geographic and Location APIs.
-"মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+"প্রয়োজন থেকে সমাধান- এক অ্যাপেই"
+"খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই"
 """
 from rest_framework import serializers
 from .validators import validate_latitude, validate_longitude, validate_radius

@@ -1,6 +1,7 @@
 # SebaCox (সেবাকক্স) — Phase 1 Foundation
 
-> **Product Principle:** *“মানুষের প্রয়োজন থেকে সেবার সমাধান।”*  
+> **Product Principle:** *“প্রয়োজন থেকে সমাধান- এক অ্যাপেই”
+“খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই”*  
 > **Mission:** Location-based multi-service platform starting in Cox's Bazar and expanding throughout Bangladesh.
 
 ---

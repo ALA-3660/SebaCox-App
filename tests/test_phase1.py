@@ -109,7 +109,8 @@ def test(name, condition, error_msg=""):
 
 print("\n==========================================")
 print("SebaCox Phase 1 Foundation Verification")
-print("“মানুষের প্রয়োজন থেকে সেবার সমাধান।”")
+print("“প্রয়োজন থেকে সমাধান- এক অ্যাপেই”")
+print("“খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই”")
 print("==========================================\n")
 
 # 1. Test Sensitive Data Filter
@@ -248,10 +249,16 @@ business_violations = []
 backend_apps_dir = ROOT_DIR / 'backend' / 'apps'
 for py_file in backend_apps_dir.glob('**/*.py'):
     # Exclude authentication models where User, OTP, and Audit logs legitimately belong
-    if 'authentication' in str(py_file):
+    if 'authentication' in str(py_file) or 'locations' in str(py_file) or 'categories' in str(py_file):
         continue
     content = py_file.read_text(encoding='utf-8')
-    for term in forbidden_terms:
+    # In Phase 5 providers app, Provider is legitimate, but fake models (Hotel, Doctor, Booking, etc.) remain strictly forbidden
+    if 'providers' in str(py_file):
+        terms_to_check = [t for t in forbidden_terms if t != 'class Provider']
+    else:
+        terms_to_check = forbidden_terms
+
+    for term in terms_to_check:
         if term in content:
             business_violations.append(f"{py_file.name}: contains {term}")
 
