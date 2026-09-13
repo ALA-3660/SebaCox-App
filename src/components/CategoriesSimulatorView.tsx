@@ -18,6 +18,7 @@ import {
   MockCategory, 
   MockService 
 } from '../data/taxonomyMockData';
+import { APP_BRAND } from '../constants/brand';
 
 interface CategoriesSimulatorViewProps {
   onBack: () => void;
@@ -77,10 +78,10 @@ export const CategoriesSimulatorView: React.FC<CategoriesSimulatorViewProps> = (
           {/* Slogan pill */}
           <div className="bg-teal-50 border border-teal-200 rounded-lg p-2 text-center">
             <p className="text-[11px] font-bold text-teal-900 font-hind">
-              “প্রয়োজন থেকে সমাধান- এক অ্যাপেই”
+              {APP_BRAND.sloganWithQuotes}
             </p>
             <p className="text-[10px] text-teal-800 font-tiro">
-              খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই
+              {APP_BRAND.shortDescriptionWithQuotes}
             </p>
           </div>
 

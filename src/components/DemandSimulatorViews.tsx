@@ -20,14 +20,18 @@ import {
   ChevronRight,
   Filter,
   Check,
-  X
+  X,
+  ArrowLeft
 } from 'lucide-react';
-import { MockDemand } from '../data/demandMockData';
+import { MockDemand, INITIAL_MOCK_DEMANDS } from '../data/demandMockData';
+import { APP_BRAND } from '../constants/brand';
 
 interface DemandSimulatorProps {
-  demands: MockDemand[];
-  onAddDemand: (newDemand: Partial<MockDemand>, publishNow: boolean) => void;
-  onStatusChange: (demandId: number, newStatus: MockDemand['status']) => void;
+  demands?: MockDemand[];
+  onAddDemand?: (newDemand: Partial<MockDemand>, publishNow: boolean) => void;
+  onStatusChange?: (demandId: number, newStatus: MockDemand['status']) => void;
+  onBack?: () => void;
+  showTypoTag?: (font: 'hind' | 'baloo' | 'tiro', role: string) => React.ReactNode;
 }
 
 export const DemandStatusBadge: React.FC<{ status: MockDemand['status']; compact?: boolean }> = ({ status, compact = false }) => {
@@ -50,7 +54,18 @@ export const DemandStatusBadge: React.FC<{ status: MockDemand['status']; compact
   );
 };
 
-export const DemandSimulatorViews: React.FC<DemandSimulatorProps> = ({ demands, onAddDemand, onStatusChange }) => {
+export const DemandSimulatorViews: React.FC<DemandSimulatorProps> = ({ 
+  demands: externalDemands, 
+  onAddDemand, 
+  onStatusChange,
+  onBack,
+  showTypoTag
+}) => {
+  const [internalDemands, setInternalDemands] = useState<MockDemand[]>(INITIAL_MOCK_DEMANDS);
+  const demands = (externalDemands && Array.isArray(externalDemands) && externalDemands.length > 0)
+    ? externalDemands
+    : internalDemands;
+
   const [activeTab, setActiveTab] = useState<'feed' | 'my_demands'>('feed');
   const [selectedDemand, setSelectedDemand] = useState<MockDemand | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
@@ -81,7 +96,17 @@ export const DemandSimulatorViews: React.FC<DemandSimulatorProps> = ({ demands, 
     { id: 9, name: 'ঈদগাঁও' },
   ];
 
-  const filteredFeed = demands.filter(d => {
+  const handleStatusChange = (demandId: number, newStatus: MockDemand['status']) => {
+    if (onStatusChange) {
+      onStatusChange(demandId, newStatus);
+    }
+    setInternalDemands(prev => prev.map(d => d.id === demandId ? { ...d, status: newStatus } : d));
+    if (selectedDemand && selectedDemand.id === demandId) {
+      setSelectedDemand(prev => prev ? { ...prev, status: newStatus } : null);
+    }
+  };
+
+  const filteredFeed = (demands || []).filter(d => {
     if (d.status !== 'PUBLISHED') return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -98,7 +123,7 @@ export const DemandSimulatorViews: React.FC<DemandSimulatorProps> = ({ demands, 
     return true;
   });
 
-  const myDemands = demands.filter(d => d.isOwner);
+  const myDemands = (demands || []).filter(d => d.isOwner);
 
   const handleCreateSubmit = (publishNow: boolean) => {
     if (!formTitle.trim() || formTitle.trim().length < 5) {
@@ -112,12 +137,17 @@ export const DemandSimulatorViews: React.FC<DemandSimulatorProps> = ({ demands, 
 
     const upz = UPAZILAS.find(u => u.id === formUpazilaId);
 
-    onAddDemand({
+    const newDemandItem: MockDemand = {
+      id: Date.now(),
+      requesterId: 1,
+      requesterName: 'মোহাম্মদ করিম',
+      contactPhone: '+8801819234567',
       titleBn: formTitle.trim(),
       titleEn: formTitle.trim(),
       descriptionBn: formDesc.trim(),
       descriptionEn: formDesc.trim(),
       demandType: formDemandType,
+      status: publishNow ? 'PUBLISHED' : 'DRAFT',
       priority: formPriority,
       upazilaId: formUpazilaId,
       upazilaNameBn: upz ? upz.name : 'কক্সবাজার সদর',
@@ -127,7 +157,15 @@ export const DemandSimulatorViews: React.FC<DemandSimulatorProps> = ({ demands, 
       currency: 'BDT',
       visibility: 'PUBLIC',
       contactPreference: 'IN_APP_ONLY',
-    }, publishNow);
+      isOwner: true,
+      publishedAt: publishNow ? new Date().toISOString() : undefined,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (onAddDemand) {
+      onAddDemand(newDemandItem, publishNow);
+    }
+    setInternalDemands(prev => [newDemandItem, ...prev]);
 
     // Reset
     setFormTitle('');
@@ -140,27 +178,38 @@ export const DemandSimulatorViews: React.FC<DemandSimulatorProps> = ({ demands, 
     <div className="flex flex-col h-full bg-slate-50 text-slate-800">
       {/* Subheader Navigation */}
       <div className="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between">
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-          <button
-            onClick={() => setActiveTab('feed')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activeTab === 'feed'
-                ? 'bg-teal-700 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            প্রয়োজনের ফিড ({filteredFeed.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('my_demands')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-              activeTab === 'my_demands'
-                ? 'bg-teal-700 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            আমার প্রয়োজন ({myDemands.length})
-          </button>
+        <div className="flex items-center gap-2">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="p-1 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer"
+              title="ফিরে যান"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          )}
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+            <button
+              onClick={() => setActiveTab('feed')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                activeTab === 'feed'
+                  ? 'bg-teal-700 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              প্রয়োজনের ফিড ({filteredFeed.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('my_demands')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                activeTab === 'my_demands'
+                  ? 'bg-teal-700 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              আমার প্রয়োজন ({myDemands.length})
+            </button>
+          </div>
         </div>
 
         <button
@@ -176,6 +225,16 @@ export const DemandSimulatorViews: React.FC<DemandSimulatorProps> = ({ demands, 
       <div className="flex-1 overflow-y-auto p-4">
         {activeTab === 'feed' ? (
           <div>
+            {/* Brand Slogan Banner */}
+            <div className="bg-teal-50/70 border border-teal-200/80 rounded-xl p-2.5 text-center mb-3">
+              <p className="text-[11px] font-bold text-teal-900 font-hind">
+                {APP_BRAND.sloganWithQuotes}
+              </p>
+              <p className="text-[10px] text-teal-800 font-tiro">
+                {APP_BRAND.shortDescriptionWithQuotes}
+              </p>
+            </div>
+
             {/* Search & Filter Bar */}
             <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs mb-4 space-y-2.5">
               <div className="relative">
@@ -225,6 +284,7 @@ export const DemandSimulatorViews: React.FC<DemandSimulatorProps> = ({ demands, 
                 <AlertCircle className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                 <p className="text-sm font-bold text-slate-700">কোনো প্রকাশিত প্রয়োজন পাওয়া যায়নি</p>
                 <p className="text-xs text-slate-500 mt-1">অন্য উপজেলা নির্বাচন করুন অথবা নতুন প্রয়োজন পোস্ট করুন</p>
+                <p className="text-[11px] text-teal-800 mt-2 font-tiro">{APP_BRAND.combinedTagline}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -284,6 +344,7 @@ export const DemandSimulatorViews: React.FC<DemandSimulatorProps> = ({ demands, 
               <div className="text-center py-12 bg-white rounded-2xl border border-slate-200 p-6">
                 <AlertCircle className="w-8 h-8 text-slate-400 mx-auto mb-2" />
                 <p className="text-sm font-bold text-slate-700">আপনার কোনো প্রয়োজন তালিকাভুক্ত নেই</p>
+                <p className="text-[11px] text-teal-800 mt-1 font-tiro">{APP_BRAND.combinedTagline}</p>
                 <button
                   onClick={() => setIsCreateOpen(true)}
                   className="mt-3 inline-flex items-center gap-1.5 bg-teal-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold"
@@ -409,8 +470,7 @@ export const DemandSimulatorViews: React.FC<DemandSimulatorProps> = ({ demands, 
                   {selectedDemand.status === 'DRAFT' && (
                     <button
                       onClick={() => {
-                        onStatusChange(selectedDemand.id, 'PUBLISHED');
-                        setSelectedDemand(prev => prev ? { ...prev, status: 'PUBLISHED' } : null);
+                        handleStatusChange(selectedDemand.id, 'PUBLISHED');
                       }}
                       className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                     >
@@ -422,8 +482,7 @@ export const DemandSimulatorViews: React.FC<DemandSimulatorProps> = ({ demands, 
                     <>
                       <button
                         onClick={() => {
-                          onStatusChange(selectedDemand.id, 'FULFILLED');
-                          setSelectedDemand(prev => prev ? { ...prev, status: 'FULFILLED' } : null);
+                          handleStatusChange(selectedDemand.id, 'FULFILLED');
                         }}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                       >
@@ -431,8 +490,7 @@ export const DemandSimulatorViews: React.FC<DemandSimulatorProps> = ({ demands, 
                       </button>
                       <button
                         onClick={() => {
-                          onStatusChange(selectedDemand.id, 'PAUSED');
-                          setSelectedDemand(prev => prev ? { ...prev, status: 'PAUSED' } : null);
+                          handleStatusChange(selectedDemand.id, 'PAUSED');
                         }}
                         className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                       >
@@ -440,8 +498,7 @@ export const DemandSimulatorViews: React.FC<DemandSimulatorProps> = ({ demands, 
                       </button>
                       <button
                         onClick={() => {
-                          onStatusChange(selectedDemand.id, 'CANCELLED');
-                          setSelectedDemand(prev => prev ? { ...prev, status: 'CANCELLED' } : null);
+                          handleStatusChange(selectedDemand.id, 'CANCELLED');
                         }}
                         className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                       >
@@ -454,8 +511,7 @@ export const DemandSimulatorViews: React.FC<DemandSimulatorProps> = ({ demands, 
                     <>
                       <button
                         onClick={() => {
-                          onStatusChange(selectedDemand.id, 'PUBLISHED');
-                          setSelectedDemand(prev => prev ? { ...prev, status: 'PUBLISHED' } : null);
+                          handleStatusChange(selectedDemand.id, 'PUBLISHED');
                         }}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                       >
@@ -463,8 +519,7 @@ export const DemandSimulatorViews: React.FC<DemandSimulatorProps> = ({ demands, 
                       </button>
                       <button
                         onClick={() => {
-                          onStatusChange(selectedDemand.id, 'CANCELLED');
-                          setSelectedDemand(prev => prev ? { ...prev, status: 'CANCELLED' } : null);
+                          handleStatusChange(selectedDemand.id, 'CANCELLED');
                         }}
                         className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                       >
@@ -476,8 +531,7 @@ export const DemandSimulatorViews: React.FC<DemandSimulatorProps> = ({ demands, 
                   {selectedDemand.status === 'FULFILLED' && (
                     <button
                       onClick={() => {
-                        onStatusChange(selectedDemand.id, 'CLOSED');
-                        setSelectedDemand(prev => prev ? { ...prev, status: 'CLOSED' } : null);
+                        handleStatusChange(selectedDemand.id, 'CLOSED');
                       }}
                       className="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                     >

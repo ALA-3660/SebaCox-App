@@ -69,8 +69,10 @@ import {
 } from './ProviderSimulatorViews';
 import { CategoriesSimulatorView } from './CategoriesSimulatorView';
 import { DemandSimulatorViews } from './DemandSimulatorViews';
+import { MockDemand, INITIAL_MOCK_DEMANDS } from '../data/demandMockData';
+import { APP_BRAND } from '../constants/brand';
 
-type FlutterScreen = 'auth' | 'otp' | 'home' | 'location' | 'categories' | 'health' | 'providers' | 'provider_register' | 'provider_dashboard' | 'demands';
+type FlutterScreen = 'splash' | 'auth' | 'otp' | 'home' | 'location' | 'categories' | 'health' | 'providers' | 'provider_register' | 'provider_dashboard' | 'demands' | 'about';
 type AuthMode = 'login' | 'register';
 
 interface SelectedArea {
@@ -179,6 +181,9 @@ export const FlutterSimulator: React.FC = () => {
   const [providers, setProviders] = useState<MockProvider[]>(INITIAL_MOCK_PROVIDERS);
   const [currentProvider, setCurrentProvider] = useState<MockProvider>(INITIAL_MOCK_PROVIDERS[0]);
   const [showPostSheet, setShowPostSheet] = useState<boolean>(false);
+
+  // Phase 6 Demand State
+  const [demands, setDemands] = useState<MockDemand[]>(INITIAL_MOCK_DEMANDS);
 
   // Timer countdown
   useEffect(() => {
@@ -509,6 +514,14 @@ export const FlutterSimulator: React.FC = () => {
           {/* Sub Navigation Tabs for Direct Screen Testing */}
           <div className="bg-teal-900 text-white px-2 py-1 flex items-center justify-between text-[10px] font-baloo overflow-x-auto gap-1 shrink-0 border-b border-teal-800/60">
             <button
+              onClick={() => setActiveScreen('splash')}
+              className={`px-2 py-0.5 rounded cursor-pointer transition whitespace-nowrap ${
+                activeScreen === 'splash' ? 'bg-teal-700 font-bold text-white shadow-xs' : 'text-teal-200 hover:bg-teal-800'
+              }`}
+            >
+              স্প্ল্যাশ
+            </button>
+            <button
               onClick={() => setActiveScreen('home')}
               className={`px-2 py-0.5 rounded cursor-pointer transition whitespace-nowrap ${
                 activeScreen === 'home' ? 'bg-teal-700 font-bold text-white shadow-xs' : 'text-teal-200 hover:bg-teal-800'
@@ -541,14 +554,6 @@ export const FlutterSimulator: React.FC = () => {
               ক্যাটাগরি
             </button>
             <button
-              onClick={() => setActiveScreen('provider_dashboard')}
-              className={`px-2 py-0.5 rounded cursor-pointer transition whitespace-nowrap ${
-                activeScreen === 'provider_dashboard' ? 'bg-teal-700 font-bold text-white shadow-xs' : 'text-teal-200 hover:bg-teal-800'
-              }`}
-            >
-              ড্যাশবোর্ড
-            </button>
-            <button
               onClick={() => setActiveScreen('location')}
               className={`px-2 py-0.5 rounded cursor-pointer transition whitespace-nowrap ${
                 activeScreen === 'location' ? 'bg-teal-700 font-bold text-white shadow-xs' : 'text-teal-200 hover:bg-teal-800'
@@ -556,10 +561,48 @@ export const FlutterSimulator: React.FC = () => {
             >
               অবস্থান
             </button>
+            <button
+              onClick={() => setActiveScreen('about')}
+              className={`px-2 py-0.5 rounded cursor-pointer transition whitespace-nowrap ${
+                activeScreen === 'about' ? 'bg-teal-700 font-bold text-white shadow-xs' : 'text-teal-200 hover:bg-teal-800'
+              }`}
+            >
+              পরিচিতি
+            </button>
           </div>
 
           {/* Screen Body */}
           <div className="flex-1 overflow-y-auto p-4 flex flex-col justify-between">
+            {/* 0. SPLASH / WELCOME SCREEN (Matching mobile/lib/main.dart) */}
+            {activeScreen === 'splash' && (
+              <div className="flex flex-col items-center justify-center flex-1 py-8 px-2 text-center my-auto">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-teal-800 to-teal-600 text-white flex items-center justify-center text-lg font-black shadow-md mb-3 font-hind">
+                  SC
+                </div>
+                <h2 className="text-lg font-black text-teal-900 font-hind">
+                  {APP_BRAND.fullName}
+                </h2>
+                <div className="mt-3 bg-teal-50 border border-teal-200/90 rounded-xl p-3 w-full max-w-xs space-y-1">
+                  <p className="text-xs font-bold text-teal-950 font-hind">
+                    {APP_BRAND.sloganWithQuotes}
+                  </p>
+                  <p className="text-[11px] text-teal-800 font-tiro">
+                    {APP_BRAND.shortDescriptionWithQuotes}
+                  </p>
+                </div>
+                <div className="mt-6 flex flex-col items-center gap-2">
+                  <div className="w-5 h-5 border-2 border-teal-700 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-[11px] text-slate-500 font-tiro">সেশন পরীক্ষা করা হচ্ছে...</span>
+                </div>
+                <button
+                  onClick={() => setActiveScreen(currentUser ? 'home' : 'auth')}
+                  className="mt-6 px-5 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold font-baloo shadow-xs cursor-pointer"
+                >
+                  {currentUser ? 'হোমপেজে যান' : 'লগইন / নিবন্ধন স্ক্রিনে যান'}
+                </button>
+              </div>
+            )}
+
             {/* 1. HEALTH CHECK SCREEN (Phase 1 legacy preserved) */}
             {activeScreen === 'health' && (
               <div className="flex flex-col gap-4 py-4">
@@ -609,10 +652,14 @@ export const FlutterSimulator: React.FC = () => {
                     </h2>
                     <TypoTag font="hind" role="Large Heading" />
                   </div>
-                  <p className="text-[11px] text-slate-500 italic mt-0.5 font-tiro">
-                    “প্রয়োজন থেকে সমাধান- এক অ্যাপেই”
-“খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই”
-                  </p>
+                  <div className="mt-1.5 bg-teal-50/70 border border-teal-200/80 rounded-xl p-2 text-center">
+                    <p className="text-xs font-bold text-teal-900 font-hind">
+                      {APP_BRAND.sloganWithQuotes}
+                    </p>
+                    <p className="text-[10px] text-teal-800 font-tiro mt-0.5">
+                      {APP_BRAND.shortDescriptionWithQuotes}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Mode Selector */}
@@ -781,10 +828,10 @@ export const FlutterSimulator: React.FC = () => {
                 {/* Official Branding Slogan Card */}
                 <div className="bg-teal-50 border border-teal-200/90 rounded-xl p-2.5 text-center shadow-xs">
                   <p className="text-xs font-bold text-teal-900 font-hind">
-                    “প্রয়োজন থেকে সমাধান- এক অ্যাপেই”
+                    {APP_BRAND.sloganWithQuotes}
                   </p>
                   <p className="text-[10px] text-teal-800 font-tiro mt-0.5">
-                    “খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই”
+                    {APP_BRAND.shortDescriptionWithQuotes}
                   </p>
                 </div>
 
@@ -803,7 +850,7 @@ export const FlutterSimulator: React.FC = () => {
                     </span>
                   </div>
                   <p className="text-[11px] text-amber-900 font-tiro leading-relaxed">
-                    “প্রয়োজন থেকে সমাধান- এক অ্যাপেই” — যেকোনো সেবা বা পণ্যের চাহিদা ড্রাফট বা সরাসরি পাবলিশ করুন।
+                    {APP_BRAND.sloganWithQuotes} — যেকোনো সেবা বা পণ্যের চাহিদা ড্রাফট বা সরাসরি পাবলিশ করুন।
                   </p>
                   <button
                     onClick={() => setActiveScreen('demands')}
@@ -1222,14 +1269,103 @@ export const FlutterSimulator: React.FC = () => {
             {/* 10. DEMANDS SCREEN (Phase 6 Demand / "আমার প্রয়োজন" Engine) */}
             {activeScreen === 'demands' && (
               <DemandSimulatorViews
+                demands={demands}
+                onAddDemand={(newD, publishNow) => {
+                  const item: MockDemand = {
+                    id: Date.now(),
+                    requesterId: 1,
+                    requesterName: 'মোহাম্মদ করিম',
+                    contactPhone: '+8801819234567',
+                    titleBn: newD.titleBn || '',
+                    titleEn: newD.titleEn || '',
+                    descriptionBn: newD.descriptionBn || '',
+                    descriptionEn: newD.descriptionEn || '',
+                    demandType: newD.demandType || 'SERVICE',
+                    status: publishNow ? 'PUBLISHED' : 'DRAFT',
+                    priority: newD.priority || 'NORMAL',
+                    upazilaId: newD.upazilaId || 1,
+                    upazilaNameBn: newD.upazilaNameBn || 'কক্সবাজার সদর',
+                    locationDisplayBn: newD.locationDisplayBn || '',
+                    budgetMin: newD.budgetMin,
+                    budgetMax: newD.budgetMax,
+                    currency: 'BDT',
+                    visibility: 'PUBLIC',
+                    contactPreference: 'IN_APP_ONLY',
+                    isOwner: true,
+                    publishedAt: publishNow ? new Date().toISOString() : undefined,
+                    createdAt: new Date().toISOString(),
+                  };
+                  setDemands([item, ...demands]);
+                  setInfoMessage(publishNow ? 'প্রয়োজন প্রকাশিত হয়েছে!' : 'খসড়া হিসেবে সংরক্ষিত হয়েছে।');
+                }}
+                onStatusChange={(id, stat) => {
+                  setDemands(demands.map(d => d.id === id ? { ...d, status: stat } : d));
+                  setInfoMessage(`অবস্থা পরিবর্তিত হয়েছে: ${stat}`);
+                }}
                 onBack={() => setActiveScreen('home')}
                 showTypoTag={(f, r) => <TypoTag font={f} role={r} />}
               />
             )}
 
+            {/* 11. ABOUT / পরিচিতি SCREEN */}
+            {activeScreen === 'about' && (
+              <div className="flex flex-col gap-3 py-2 font-tiro">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                  <button
+                    onClick={() => setActiveScreen('home')}
+                    className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-900 font-bold cursor-pointer font-baloo"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span className="font-baloo">হোম</span>
+                  </button>
+                  <div className="flex items-center">
+                    <span className="text-xs font-bold text-slate-900 font-hind">সেবাকক্স পরিচিতি</span>
+                    <TypoTag font="hind" role="Page Title" />
+                  </div>
+                </div>
+
+                <div className="text-center p-4 bg-teal-50 border border-teal-200 rounded-2xl">
+                  <div className="w-12 h-12 rounded-xl bg-teal-700 text-white flex items-center justify-center font-black mx-auto mb-2 text-sm font-hind">
+                    SC
+                  </div>
+                  <h2 className="text-base font-black text-teal-950 font-hind">
+                    {APP_BRAND.fullName}
+                  </h2>
+                  <div className="mt-2 space-y-1">
+                    <p className="text-xs font-bold text-teal-900 font-hind">
+                      {APP_BRAND.sloganWithQuotes}
+                    </p>
+                    <p className="text-[11px] text-teal-800 font-tiro">
+                      {APP_BRAND.shortDescriptionWithQuotes}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-xl p-3.5 space-y-2 text-xs text-slate-700 font-tiro">
+                  <h3 className="font-bold text-slate-900 font-baloo text-sm">প্ল্যাটফর্ম সম্পর্কে</h3>
+                  <p className="leading-relaxed">
+                    SebaCox হলো কক্সবাজার জেলার ৯টি উপজেলার জন্য নির্মিত একটি সমন্বিত মাল্টি-সার্ভিস, সেবাদাতা এবং নাগরিক চাহিদা (“আমার প্রয়োজন”) প্ল্যাটফর্ম।
+                  </p>
+                  <ul className="space-y-1.5 pt-1 text-[11px] text-slate-600 font-tiro">
+                    <li>✓ <strong>৯টি উপজেলা:</strong> কক্সবাজার সদর, ঈদগাঁও, রামু, চকরিয়া, পেকুয়া, টেকনাফ, উখিয়া, মহেশখালী, কুতুবদিয়া।</li>
+                    <li>✓ <strong>৪৬টি মাস্টার ক্যাটাগরি:</strong> পাবলিক সার্ভিস ও সিস্টেম ডোমেইন।</li>
+                    <li>✓ <strong>সেবাদাতা নেটওয়ার্ক:</strong> স্বতন্ত্র কারিগর ও বাণিজ্যিক প্রতিষ্ঠান।</li>
+                    <li>✓ <strong>আমার প্রয়োজন (Demand):</strong> সরাসরি সমাধান ও সেবা গ্রহণ।</li>
+                  </ul>
+                </div>
+
+                <button
+                  onClick={() => setActiveScreen('home')}
+                  className="w-full py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold font-baloo cursor-pointer"
+                >
+                  হোম স্ক্রিনে ফিরে যান
+                </button>
+              </div>
+            )}
+
             {/* Bottom watermark */}
-            <div className="pt-2 text-center text-[10px] text-slate-400">
-              SebaCox Flutter Engine • SRID 4326 Geo-Foundation
+            <div className="pt-2 text-center text-[10px] text-slate-400 font-tiro">
+              {APP_BRAND.nameEn} Flutter Engine • {APP_BRAND.sloganWithQuotes}
             </div>
           </div>
 

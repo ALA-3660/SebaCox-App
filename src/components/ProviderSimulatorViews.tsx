@@ -26,6 +26,7 @@ import {
   INITIAL_MOCK_PROVIDERS 
 } from '../data/providerMockData';
 import { INITIAL_SERVICES } from '../data/taxonomyMockData';
+import { APP_BRAND } from '../constants/brand';
 
 // -----------------------------------------------------------------------------
 // 1. PROVIDER DIRECTORY SCREEN
@@ -40,7 +41,7 @@ interface ProviderDirectoryViewProps {
 }
 
 export const ProviderDirectoryView: React.FC<ProviderDirectoryViewProps> = ({
-  providers,
+  providers = [],
   onBack,
   onSelectProvider,
   onGoToRegister,
@@ -52,7 +53,7 @@ export const ProviderDirectoryView: React.FC<ProviderDirectoryViewProps> = ({
   const [filterAvailability, setFilterAvailability] = useState<string>('ALL');
 
   const filteredProviders = useMemo(() => {
-    return providers.filter((p) => {
+    return (providers || []).filter((p) => {
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch = !q ||
         p.business_name.toLowerCase().includes(q) ||
@@ -95,10 +96,10 @@ export const ProviderDirectoryView: React.FC<ProviderDirectoryViewProps> = ({
       {/* Brand Slogan */}
       <div className="bg-teal-50/70 border border-teal-200/80 rounded-xl p-2 text-center">
         <p className="text-[11px] font-bold text-teal-900 font-hind">
-          “প্রয়োজন থেকে সমাধান- এক অ্যাপেই”
+          {APP_BRAND.sloganWithQuotes}
         </p>
         <p className="text-[10px] text-teal-800 font-tiro">
-          খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই
+          {APP_BRAND.shortDescriptionWithQuotes}
         </p>
       </div>
 
@@ -250,8 +251,9 @@ export const ProviderDirectoryView: React.FC<ProviderDirectoryViewProps> = ({
         })}
 
         {filteredProviders.length === 0 && (
-          <div className="p-6 text-center bg-slate-50 rounded-xl text-slate-500 text-xs">
-            কোনো সেবাদাতা পাওয়া যায়নি।
+          <div className="p-6 text-center bg-slate-50 rounded-xl text-slate-500 text-xs font-tiro">
+            <p className="font-bold text-slate-700">কোনো সেবাদাতা পাওয়া যায়নি।</p>
+            <p className="text-[11px] text-teal-800 mt-1">{APP_BRAND.combinedTagline}</p>
           </div>
         )}
       </div>

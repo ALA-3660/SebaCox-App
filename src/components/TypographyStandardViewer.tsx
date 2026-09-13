@@ -15,7 +15,7 @@ import { banglaTypography } from '../theme/banglaTypography';
 
 export const TypographyStandardViewer: React.FC = () => {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [customText, setCustomText] = useState<string>('সেবাকক্স — মানুষের প্রয়োজন থেকে সেবার সমাধান।');
+  const [customText, setCustomText] = useState<string>('সেবাকক্স — “প্রয়োজন থেকে সমাধান- এক অ্যাপেই” • “খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই”');
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);

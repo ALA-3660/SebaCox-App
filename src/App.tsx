@@ -15,6 +15,7 @@ import { ApiConsole } from './components/ApiConsole';
 import { ArchitectureViewer } from './components/ArchitectureViewer';
 import { FileExplorer } from './components/FileExplorer';
 import { TestResultsView } from './components/TestResultsView';
+import { APP_BRAND } from './constants/brand';
 
 type TabType = 'simulator' | 'api' | 'architecture' | 'files' | 'tests' | 'run';
 
@@ -32,13 +33,13 @@ export default function App() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-black tracking-tight text-slate-900">SebaCox (সেবাকক্স)</h1>
-                <span className="text-[11px] font-bold bg-teal-50 text-teal-800 px-2 py-0.5 rounded-full border border-teal-200">
+                <h1 className="text-lg font-black tracking-tight text-slate-900 font-hind">{APP_BRAND.fullName}</h1>
+                <span className="text-[11px] font-bold bg-teal-50 text-teal-800 px-2 py-0.5 rounded-full border border-teal-200 font-baloo">
                   Phase 6 — Demand / “আমার প্রয়োজন” Engine Foundation
                 </span>
               </div>
-              <p className="text-xs text-teal-800 font-medium">
-                “প্রয়োজন থেকে সমাধান- এক অ্যাপেই” • “খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই”
+              <p className="text-xs text-teal-800 font-medium font-tiro">
+                {APP_BRAND.combinedTagline}
               </p>
             </div>
           </div>
@@ -218,10 +219,10 @@ flutter run -d chrome`}
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 py-4 px-6 text-center text-xs text-slate-500">
+      <footer className="bg-white border-t border-slate-200 py-4 px-6 text-center text-xs text-slate-500 font-tiro">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>SebaCox • লোকেশন ও ক্যাটাগরি-ভিত্তিক মাল্টি-সার্ভিস প্ল্যাটফর্ম • Phase 1–5 Verified (169 Tests)</span>
-          <span className="font-medium text-slate-700">“প্রয়োজন থেকে সমাধান- এক অ্যাপেই”</span>
+          <span>{APP_BRAND.nameEn} • লোকেশন, সার্ভিস, প্রোভাইডার ও ডিমান্ড প্ল্যাটফর্ম • Phase 1–6 Verified (224 Tests)</span>
+          <span className="font-semibold text-slate-700">{APP_BRAND.combinedTagline}</span>
         </div>
       </footer>
     </div>
