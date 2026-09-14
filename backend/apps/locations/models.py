@@ -22,10 +22,13 @@ Locality / Area / Para / Moholla
 """
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from .constants import (
     GeographicType,
+    LocalityType,
     UserLocationType,
     ServiceAreaType,
+    VerificationStatus,
     DEFAULT_SRID,
 )
 from .validators import (
@@ -72,6 +75,9 @@ class BaseGeographicEntity(models.Model):
     class Meta:
         abstract = True
         ordering = ['name_en']
+
+    def clean(self):
+        pass
 
     def __str__(self):
         return f"{self.name_en} ({self.name_bn})"
@@ -215,6 +221,11 @@ class CityCorporation(BaseGeographicEntity):
         ]
         ordering = ['name_en']
 
+    def clean(self):
+        super().clean()
+        if not self.district_id:
+            raise ValidationError({'district': 'সিটি কর্পোরেশন অবশ্যই একটি বৈধ জেলার অধীনে হতে হবে।'})
+
 
 class Municipality(BaseGeographicEntity):
     """
@@ -245,6 +256,15 @@ class Municipality(BaseGeographicEntity):
         ]
         ordering = ['name_en']
 
+    def clean(self):
+        super().clean()
+        if not self.district_id:
+            raise ValidationError({'district': 'পৌরসভা অবশ্যই একটি বৈধ জেলার অধীনে হতে হবে।'})
+        if self.upazila and self.district and self.upazila.district_id != self.district_id:
+            raise ValidationError({
+                'upazila': f"উপজেলা '{self.upazila.name_bn}' অবশ্যই জেলা '{self.district.name_bn}'-এর অন্তর্ভুক্ত হতে হবে।"
+            })
+
 
 class Union(BaseGeographicEntity):
     """
@@ -267,6 +287,11 @@ class Union(BaseGeographicEntity):
             ),
         ]
         ordering = ['name_en']
+
+    def clean(self):
+        super().clean()
+        if not self.upazila_id:
+            raise ValidationError({'upazila': 'ইউনিয়ন অবশ্যই একটি বৈধ উপজেলার অধীনে হতে হবে।'})
 
 
 class Ward(BaseGeographicEntity):
@@ -303,12 +328,37 @@ class Ward(BaseGeographicEntity):
         verbose_name_plural = 'ওয়ার্ডসমূহ (Wards)'
         ordering = ['ward_number']
 
+    @property
+    def display_name_bn(self):
+        """
+        Returns purely the Ward Number formatted in Bengali (e.g. '১ নং ওয়ার্ড').
+        Strictly excludes any locality, village, or landmark names.
+        """
+        bangla_digits = {'0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'}
+        num_str = ''.join(bangla_digits.get(c, c) for c in str(self.ward_number))
+        return f"{num_str} নং ওয়ার্ড"
+
+    def clean(self):
+        super().clean()
+        parents = [p for p in [self.municipality_id, self.city_corporation_id, self.union_id] if p is not None]
+        if len(parents) == 0:
+            raise ValidationError('ওয়ার্ড অবশ্যই একটি পৌরসভা, সিটি কর্পোরেশন, অথবা ইউনিয়নের অধীনে হতে হবে।')
+        if len(parents) > 1:
+            raise ValidationError('একটি ওয়ার্ড একাধিক প্রশাসনিক ইউনিটের (পৌরসভা/সিটি কর্পোরেশন/ইউনিয়ন) সাথে যুক্ত হতে পারে না।')
+
 
 class Locality(BaseGeographicEntity):
     """
     Area / Para / Moholla / Village / Landmark (e.g. Kolatoli, Sugandha Point, Laboni Beach).
     Most granular human-facing reference for service booking and discovery.
     """
+    locality_type = models.CharField(
+        max_length=20,
+        choices=LocalityType.choices,
+        default=LocalityType.LOCAL_AREA,
+        db_index=True,
+        help_text="লোকালিটির প্রকার (পাড়া, মহল্লা, গ্রাম, বাজার, ইত্যাদি)"
+    )
     upazila = models.ForeignKey(
         Upazila,
         on_delete=models.CASCADE,
@@ -341,11 +391,134 @@ class Locality(BaseGeographicEntity):
         null=True,
         help_text="ডাকঘর কোড (Postcode e.g. 4700)"
     )
+    aliases = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="বিকল্প নাম বা উপনামসমূহ (e.g. Kolatoli, Kalatali, কলাতলী)"
+    )
+    source = models.CharField(
+        max_length=150,
+        default='Field Survey / BBS / Local Verification',
+        blank=True,
+        help_text="তথ্যসূত্র বা উৎস"
+    )
+    verification_status = models.CharField(
+        max_length=30,
+        choices=VerificationStatus.choices,
+        default=VerificationStatus.FIELD_VERIFIED,
+        db_index=True,
+        help_text="যাচাইকরণের অবস্থা"
+    )
 
     class Meta:
         verbose_name = 'এলাকা / পাড়া (Locality)'
         verbose_name_plural = 'এলাকাসমূহ (Localities)'
         ordering = ['name_en']
+
+    def clean(self):
+        super().clean()
+        if not self.upazila_id:
+            raise ValidationError({'upazila': 'লোকালিটি অবশ্যই একটি বৈধ উপজেলার অন্তর্ভুক্ত হতে হবে।'})
+
+        # Validate union hierarchy
+        if self.union_id and self.union.upazila_id != self.upazila_id:
+            raise ValidationError({
+                'union': f"ইউনিয়ন '{self.union.name_bn}' অবশ্যই নির্বাচিত উপজেলা '{self.upazila.name_bn}'-এর অন্তর্ভুক্ত হতে হবে।"
+            })
+
+        # Validate municipality hierarchy
+        if self.municipality_id and self.municipality.upazila_id and self.municipality.upazila_id != self.upazila_id:
+            raise ValidationError({
+                'municipality': f"পৌরসভা '{self.municipality.name_bn}' অবশ্যই নির্বাচিত উপজেলা '{self.upazila.name_bn}'-এর অন্তর্ভুক্ত হতে হবে।"
+            })
+
+        # Validate ward hierarchy
+        if self.ward_id:
+            if self.ward.union_id:
+                if self.union_id and self.ward.union_id != self.union_id:
+                    raise ValidationError({
+                        'ward': f"ওয়ার্ড #{self.ward.ward_number} ইউনিয়ন '{self.ward.union.name_bn}'-এর অন্তর্ভুক্ত, যা নির্বাচিত ইউনিয়ন '{self.union.name_bn}'-এর সাথে মেলে না।"
+                    })
+                if self.ward.union.upazila_id != self.upazila_id:
+                    raise ValidationError({
+                        'ward': "ওয়ার্ডের অভিভাবক ইউনিয়নটি নির্বাচিত উপজেলার অধীন নয়।"
+                    })
+            elif self.ward.municipality_id:
+                if self.municipality_id and self.ward.municipality_id != self.municipality_id:
+                    raise ValidationError({
+                        'ward': f"ওয়ার্ড #{self.ward.ward_number} পৌরসভা '{self.ward.municipality.name_bn}'-এর অন্তর্ভুক্ত, যা নির্বাচিত পৌরসভার সাথে মেলে না।"
+                    })
+
+
+class PostalLocation(BaseGeographicEntity):
+    """
+    Separate Postal Directory / Post Office entity.
+    Decoupled from rigid administrative parent-child to reflect actual Bangladesh Post Office delivery zones.
+    Maps Post Office Name, Postal Code, and administrative associations.
+    """
+    post_office_name_bn = models.CharField(
+        max_length=150,
+        db_index=True,
+        help_text="ডাকঘরের নাম বাংলায় (e.g. কক্সবাজার প্রধান ডাকঘর, ঝিলংঝা সাব-পোস্ট অফিস)"
+    )
+    post_office_name_en = models.CharField(
+        max_length=150,
+        db_index=True,
+        help_text="Post office name in English (e.g. Cox's Bazar Head Post Office, Jhilongjha Sub Post Office)"
+    )
+    post_code = models.CharField(
+        max_length=10,
+        db_index=True,
+        help_text="৪-সংখ্যার পোস্ট কোড (e.g. 4700, 4701, 4702)"
+    )
+    district = models.ForeignKey(
+        District,
+        on_delete=models.CASCADE,
+        related_name='postal_locations'
+    )
+    upazila = models.ForeignKey(
+        Upazila,
+        on_delete=models.CASCADE,
+        related_name='postal_locations'
+    )
+    union = models.ForeignKey(
+        Union,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='postal_locations'
+    )
+    municipality = models.ForeignKey(
+        Municipality,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='postal_locations'
+    )
+    aliases = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="বিকল্প নাম বা ডাকঘরের পরিচিত উপনামসমূহ"
+    )
+    source = models.CharField(
+        max_length=100,
+        default='Bangladesh Post Master / BBS',
+        help_text="তথ্যসূত্র বা উৎস"
+    )
+    verification_status = models.CharField(
+        max_length=30,
+        choices=VerificationStatus.choices,
+        default=VerificationStatus.OFFICIALLY_CONFIRMED,
+        db_index=True
+    )
+
+    class Meta:
+        verbose_name = 'ডাকঘর অবস্থান (Postal Location)'
+        verbose_name_plural = 'ডাকঘর অবস্থানসমূহ (Postal Locations)'
+        ordering = ['post_code', 'name_en']
+
+    def __str__(self):
+        return f"{self.post_office_name_bn} ({self.post_code})"
 
 
 class GeoLocation(models.Model):
@@ -490,6 +663,18 @@ class UserLocation(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True
+    )
+    postal_location = models.ForeignKey(
+        PostalLocation,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+    detailed_address = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        help_text="বিস্তারিত ঠিকানা (ঐচ্ছিক)"
     )
     label = models.CharField(
         max_length=100,

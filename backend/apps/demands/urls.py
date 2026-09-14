@@ -16,6 +16,11 @@ from .views import (
     MyActiveDemandListView,
     MyHistoryDemandListView,
 )
+from apps.matching.views import (
+    DemandMatchesListView,
+    DemandMatchDetailView,
+    DemandRematchView,
+)
 
 app_name = 'demands'
 
@@ -30,6 +35,11 @@ urlpatterns = [
 
     # Single Demand Detail, Update, and Soft-Delete
     path('<int:pk>/', DemandDetailView.as_view(), name='demand-detail'),
+
+    # Matching Engine Integration (Phase 7)
+    path('<int:demand_id>/matches/', DemandMatchesListView.as_view(), name='demand-matches'),
+    path('<int:demand_id>/matches/<int:match_id>/', DemandMatchDetailView.as_view(), name='demand-match-detail'),
+    path('<int:demand_id>/rematch/', DemandRematchView.as_view(), name='demand-rematch'),
 
     # Controlled State Machine Lifecycle Endpoints
     path('<int:pk>/publish/', DemandPublishView.as_view(), name='demand-publish'),

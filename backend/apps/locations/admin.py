@@ -14,6 +14,7 @@ from .models import (
     Union,
     Ward,
     Locality,
+    PostalLocation,
     GeoLocation,
     UserLocation,
     ServiceArea,
@@ -87,9 +88,16 @@ class WardAdmin(admin.ModelAdmin):
 
 @admin.register(Locality)
 class LocalityAdmin(admin.ModelAdmin):
-    list_display = ('name_en', 'name_bn', 'code', 'upazila', 'postal_code', 'is_active')
+    list_display = ('name_en', 'name_bn', 'code', 'upazila', 'verification_status', 'postal_code', 'is_active')
     search_fields = ('name_en', 'name_bn', 'code', 'postal_code')
-    list_filter = ('is_active', 'upazila__district', 'upazila')
+    list_filter = ('is_active', 'verification_status', 'upazila__district', 'upazila')
+
+
+@admin.register(PostalLocation)
+class PostalLocationAdmin(admin.ModelAdmin):
+    list_display = ('post_office_name_bn', 'post_office_name_en', 'post_code', 'upazila', 'district', 'verification_status', 'is_active')
+    search_fields = ('post_office_name_bn', 'post_office_name_en', 'post_code')
+    list_filter = ('is_active', 'verification_status', 'district', 'upazila')
 
 
 @admin.register(GeoLocation)

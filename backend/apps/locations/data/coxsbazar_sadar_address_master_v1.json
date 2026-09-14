@@ -1,0 +1,77 @@
+{
+  "version": "1.0",
+  "metadata": {
+    "title": "Cox’s Bazar Sadar Upazila Address Master v1",
+    "country": "Bangladesh (BD)",
+    "division": "Chattogram (DIV-CTG)",
+    "district": "Cox's Bazar (DIST-COXB)",
+    "upazila": "Cox's Bazar Sadar (UPA-COXB-SADAR)",
+    "verification_policy": "Field Verified & Official Post Master",
+    "updated_at": "2026-09-14T05:50:00Z"
+  },
+  "post_offices": [
+    {
+      "code": "PO-COXB-4700",
+      "post_office_name_bn": "কক্সবাজার প্রধান ডাকঘর",
+      "post_office_name_en": "Cox's Bazar Head Post Office",
+      "post_code": "4700",
+      "aliases": ["Cox's Bazar Head Post Office", "Sadar PO", "Cox's Bazar HPO", "প্রধান ডাকঘর", "সদর পোস্ট অফিস"]
+    },
+    {
+      "code": "PO-JHIL-4701",
+      "post_office_name_bn": "ঝিলংঝা সাব-পোস্ট অফিস",
+      "post_office_name_en": "Jhilongjha Sub Post Office",
+      "post_code": "4701",
+      "aliases": ["Jhilongjha Sub Post Office", "Zhilongzha PO", "ঝিলংঝা ডাকঘর", "ঝিলংঝা সাব পোস্ট অফিস"]
+    },
+    {
+      "code": "PO-EIDG-4702",
+      "post_office_name_bn": "ঈদগাঁও সাব-পোস্ট অফিস",
+      "post_office_name_en": "Eidgaon Sub Post Office",
+      "post_code": "4702",
+      "aliases": ["Eidgaon PO", "ঈদগাঁও ডাকঘর", "ঈদগাঁও সাব পোস্ট অফিস"]
+    },
+    {
+      "code": "PO-KHUR-4700",
+      "post_office_name_bn": "খুরুশকুল শাখা ডাকঘর",
+      "post_office_name_en": "Khurushkul Branch Post Office",
+      "post_code": "4700",
+      "aliases": ["Khurushkul PO", "খুরুশকুল শাখা ডাকঘর", "খুরুশকুল ইডিবিও"]
+    },
+    {
+      "code": "PO-CHOWF-4700",
+      "post_office_name_bn": "চৌফলদণ্ডী শাখা ডাকঘর",
+      "post_office_name_en": "Chowfaldandi Branch Post Office",
+      "post_code": "4700",
+      "aliases": ["Chowfaldandi PO", "চৌফলদণ্ডী শাখা ডাকঘর", "চৌফলদণ্ডী ইডিবিও"]
+    },
+    {
+      "code": "PO-VARU-4700",
+      "post_office_name_bn": "ভারুয়াখালী শাখা ডাকঘর",
+      "post_office_name_en": "Varuakhali Branch Post Office",
+      "post_code": "4700",
+      "aliases": ["Varuakhali PO", "ভারুয়াখালী শাখা ডাকঘর", "ভারুয়াখালী ইডিবিও"]
+    },
+    {
+      "code": "PO-PMKH-4700",
+      "post_office_name_bn": "পিএমখালী শাখা ডাকঘর",
+      "post_office_name_en": "PM Khali Branch Post Office",
+      "post_code": "4700",
+      "aliases": ["PM Khali PO", "পিএমখালী শাখা ডাকঘর", "পিএমখালী ইডিবিও"]
+    }
+  ],
+  "municipality": {
+    "code": "MUN-COXB",
+    "name_bn": "কক্সবাজার পৌরসভা",
+    "name_en": "Cox's Bazar Municipality",
+    "wards_count": 12,
+    "postal_code": "4700"
+  },
+  "unions": [
+    { "code": "UNI-JHILONGJHA", "name_bn": "ঝিলংঝা", "name_en": "Jhilongjha", "postal_code": "4701", "wards_count": 9 },
+    { "code": "UNI-PMKHALI", "name_bn": "পিএমখালী", "name_en": "PM Khali", "postal_code": "4700", "wards_count": 9 },
+    { "code": "UNI-KHURUSHKUL", "name_bn": "খুরুশকুল", "name_en": "Khurushkul", "postal_code": "4700", "wards_count": 9 },
+    { "code": "UNI-CHOWFALDANDI", "name_bn": "চৌফলদণ্ডী", "name_en": "Chowfaldandi", "postal_code": "4700", "wards_count": 9 },
+    { "code": "UNI-VARUAKHALI", "name_bn": "ভারুয়াখালী", "name_en": "Varuakhali", "postal_code": "4700", "wards_count": 9 }
+  ]
+}

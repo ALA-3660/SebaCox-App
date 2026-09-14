@@ -19,6 +19,9 @@ urlpatterns = [
     path('unions/', views.UnionListView.as_view(), name='union-list'),
     path('wards/', views.WardListView.as_view(), name='ward-list'),
     path('localities/', views.LocalityListView.as_view(), name='locality-list'),
+    path('postal-locations/', views.PostalLocationListView.as_view(), name='postal-location-list'),
+    path('post-offices/', views.PostalLocationListView.as_view(), name='post-office-list'),
+    path('children/', views.LocationChildrenView.as_view(), name='location-children'),
 
     # Search & Proximity (Public)
     path('search/', views.LocationSearchView.as_view(), name='location-search'),

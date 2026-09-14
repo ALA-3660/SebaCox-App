@@ -862,6 +862,43 @@ export const FlutterSimulator: React.FC = () => {
                   </button>
                 </div>
 
+                {/* Phase 6 & 8: Demand & Offer Engine Card */}
+                <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="p-1 bg-teal-100 text-teal-800 rounded-md">
+                        <ShoppingBag className="w-3.5 h-3.5" />
+                      </span>
+                      <span className="text-xs font-bold text-slate-900 font-baloo">আমার প্রয়োজন ও প্রস্তাব</span>
+                      <TypoTag font="baloo" role="Card Heading" />
+                    </div>
+                    <span className="text-[9px] font-bold bg-teal-50 text-teal-800 px-1.5 py-0.5 rounded border border-teal-200 font-mono">
+                      Phase 6 & 8
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-slate-600 font-tiro leading-relaxed">
+                    চাহিদা প্রকাশ করুন এবং সেবাদাতাদের থেকে সরাসরি প্রস্তাব ও পাল্টা প্রস্তাব গ্রহণ করুন।
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setActiveScreen('demands')}
+                      className="py-2 px-2 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer font-baloo shadow-xs"
+                    >
+                      <Plus className="w-3 h-3 text-white" />
+                      <span>প্রয়োজন ও ফিড</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveScreen('demands')}
+                      className="py-2 px-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-900 rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer font-baloo"
+                    >
+                      <DollarSign className="w-3 h-3 text-purple-700" />
+                      <span>প্রস্তাবসমূহ</span>
+                    </button>
+                  </div>
+                </div>
+
                 {/* Phase 5 Provider & Service Network Quick Actions */}
                 <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-xs space-y-2">
                   <div className="flex items-center justify-between">

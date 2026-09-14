@@ -22,6 +22,8 @@ api_v1_patterns = [
     path('services/', include('apps.categories.urls_services', namespace='services')),
     path('providers/', include('apps.providers.urls', namespace='providers')),
     path('demands/', include('apps.demands.urls', namespace='demands')),
+    path('matching/', include('apps.matching.urls', namespace='matching')),
+    path('offers/', include('apps.offers.urls', namespace='offers')),
 ]
 
 urlpatterns = [

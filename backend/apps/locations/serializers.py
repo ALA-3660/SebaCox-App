@@ -15,6 +15,7 @@ from .models import (
     Union,
     Ward,
     Locality,
+    PostalLocation,
     GeoLocation,
     UserLocation,
     ServiceArea,
@@ -77,17 +78,42 @@ class UnionSerializer(serializers.ModelSerializer):
 
 
 class WardSerializer(serializers.ModelSerializer):
+    display_name_bn = serializers.CharField(read_only=True)
+
     class Meta:
         model = Ward
-        fields = ['id', 'ward_number', 'name_bn', 'name_en', 'code', 'municipality', 'city_corporation', 'union', 'is_active']
+        fields = ['id', 'ward_number', 'display_name_bn', 'name_bn', 'name_en', 'code', 'municipality', 'city_corporation', 'union', 'is_active']
 
 
 class LocalitySerializer(serializers.ModelSerializer):
     upazila_name = serializers.CharField(source='upazila.name_en', read_only=True)
+    ward_id = serializers.IntegerField(source='ward.id', read_only=True, allow_null=True)
+    ward_number = serializers.IntegerField(source='ward.ward_number', read_only=True, allow_null=True)
+    source_type = serializers.CharField(source='locality_type', read_only=True)
+    source_reference = serializers.CharField(source='source', read_only=True)
 
     class Meta:
         model = Locality
-        fields = ['id', 'upazila', 'upazila_name', 'municipality', 'union', 'ward', 'name_bn', 'name_en', 'code', 'postal_code', 'is_active']
+        fields = [
+            'id', 'upazila', 'upazila_name', 'municipality', 'union', 'ward',
+            'ward_id', 'ward_number', 'locality_type', 'source_type', 'source_reference',
+            'name_bn', 'name_en', 'code', 'postal_code',
+            'aliases', 'source', 'verification_status', 'is_active'
+        ]
+
+
+class PostalLocationSerializer(serializers.ModelSerializer):
+    district_name = serializers.CharField(source='district.name_en', read_only=True)
+    upazila_name = serializers.CharField(source='upazila.name_en', read_only=True)
+
+    class Meta:
+        model = PostalLocation
+        fields = [
+            'id', 'post_office_name_bn', 'post_office_name_en', 'post_code',
+            'district', 'district_name', 'upazila', 'upazila_name',
+            'union', 'municipality', 'aliases', 'source',
+            'verification_status', 'is_active'
+        ]
 
 
 class GeoLocationSerializer(serializers.ModelSerializer):
@@ -105,6 +131,8 @@ class UserLocationSerializer(serializers.ModelSerializer):
     union_name = serializers.CharField(source='union.name_en', read_only=True)
     municipality_name = serializers.CharField(source='municipality.name_en', read_only=True)
     locality_name = serializers.CharField(source='locality.name_en', read_only=True)
+    postal_office_bn = serializers.CharField(source='postal_location.post_office_name_bn', read_only=True)
+    post_code = serializers.CharField(source='postal_location.post_code', read_only=True)
 
     class Meta:
         model = UserLocation
@@ -114,6 +142,8 @@ class UserLocationSerializer(serializers.ModelSerializer):
             'upazila', 'upazila_name', 'upazila_name_bn',
             'union', 'union_name', 'municipality', 'municipality_name',
             'ward', 'locality', 'locality_name',
+            'postal_location', 'postal_office_bn', 'post_code',
+            'detailed_address',
             'geo_location', 'created_at'
         ]
 
@@ -129,6 +159,7 @@ class LocationSearchItemSerializer(serializers.Serializer):
     hierarchy_path_en = serializers.CharField()
     parent_id = serializers.IntegerField(allow_null=True, required=False)
     postal_code = serializers.CharField(allow_null=True, required=False)
+    aliases = serializers.ListField(child=serializers.CharField(), required=False, default=list)
 
 
 class SelectedLocationUpdateSerializer(serializers.Serializer):
@@ -139,6 +170,8 @@ class SelectedLocationUpdateSerializer(serializers.Serializer):
     municipality_id = serializers.IntegerField(required=False, allow_null=True)
     ward_id = serializers.IntegerField(required=False, allow_null=True)
     locality_id = serializers.IntegerField(required=False, allow_null=True)
+    postal_location_id = serializers.IntegerField(required=False, allow_null=True)
+    detailed_address = serializers.CharField(required=False, allow_blank=True, max_length=255)
     label = serializers.CharField(required=False, allow_blank=True, max_length=100)
 
 

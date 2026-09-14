@@ -20,8 +20,40 @@ class GeographicType(models.TextChoices):
     UNION = 'UNION', 'ইউনিয়ন (Union Parishad)'
     WARD = 'WARD', 'ওয়ার্ড (Ward)'
     LOCALITY = 'LOCALITY', 'এলাকা / পাড়া (Locality/Para/Moholla)'
+    POSTAL = 'POSTAL', 'ডাকঘর (Post Office)'
     ADDRESS = 'ADDRESS', 'ঠিকানা (Specific Address)'
     POINT = 'POINT', 'ভৌগোলিক স্থানাঙ্ক (Geographic Coordinate)'
+
+
+class VerificationStatus(models.TextChoices):
+    """
+    Field verification and authority validation status.
+    """
+    UNVERIFIED = 'UNVERIFIED', 'যাচাই করা হয়নি (Unverified)'
+    NEEDS_REVIEW = 'NEEDS_REVIEW', 'পর্যালোচনা প্রয়োজন (Needs Review)'
+    FIELD_VERIFIED = 'FIELD_VERIFIED', 'মাঠ পর্যায়ে যাচাইকৃত (Field Verified)'
+    SOURCE_VERIFIED = 'SOURCE_VERIFIED', 'সরকারি উৎস দ্বারা যাচাইকৃত (Source Verified)'
+    OFFICIALLY_CONFIRMED = 'OFFICIALLY_CONFIRMED', 'প্রশাসনিকভাবে অনুমোদিত (Officially Confirmed)'
+
+
+class LocalityType(models.TextChoices):
+    """
+    Sub-types for granular Locality:
+    - পাড়া (Para)
+    - মহল্লা (Moholla)
+    - গ্রাম (Village)
+    - বাজার / মার্কেট (Bazar/Market)
+    - আবাসিক এলাকা (Residential Area)
+    - স্থানীয় পরিচিত এলাকা (Landmark / Local Area)
+    - অন্যান্য (Other)
+    """
+    PARA = 'PARA', 'পাড়া (Para)'
+    MOHOLLA = 'MOHOLLA', 'মহল্লা (Moholla)'
+    VILLAGE = 'VILLAGE', 'গ্রাম (Village)'
+    BAZAR = 'BAZAR', 'বাজার / মার্কেট (Bazar/Market)'
+    RESIDENTIAL = 'RESIDENTIAL', 'আবাসিক এলাকা (Residential Area)'
+    LOCAL_AREA = 'LOCAL_AREA', 'স্থানীয় পরিচিত এলাকা (Local Area / Landmark)'
+    OTHER = 'OTHER', 'অন্যান্য (Other)'
 
 
 class UserLocationType(models.TextChoices):

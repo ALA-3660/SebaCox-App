@@ -15,6 +15,11 @@ import '../../categories/models/service_model.dart';
 import '../../categories/screens/categories_explorer_screen.dart';
 import '../../categories/widgets/category_card.dart';
 import '../../categories/widgets/service_card.dart';
+import '../../demand/screens/create_demand_screen.dart';
+import '../../demand/screens/my_demand_screen.dart';
+import '../../offers/screens/offer_list_screen.dart';
+import '../../provider/screens/provider_dashboard_screen.dart';
+import '../../provider/screens/provider_registration_flow_screen.dart';
 
 /// Basic authenticated screen with user identity, location foundation, and Phase 4 curated services.
 class AuthHomeScreen extends StatefulWidget {
@@ -66,6 +71,99 @@ class _AuthHomeScreenState extends State<AuthHomeScreen> {
         });
       }
     }
+  }
+
+  void _showPostBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'আমার পোস্ট করুন',
+                style: AppTypography.largeHeading2.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'আপনি কীভাবে সেবাকক্স ব্যবহার করতে চান?',
+                style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.search, color: AppColors.primary),
+                ),
+                title: Text(
+                  'আমি সেবা নিব (আমার প্রয়োজন)',
+                  style: AppTypography.mediumHeading2.copyWith(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('নতুন প্রয়োজন পোস্ট করুন বা আপনার পূর্বের প্রয়োজন দেখুন'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CreateDemandScreen(
+                        onSubmit: (data, publishNow) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(publishNow
+                                  ? 'প্রয়োজন সফলভাবে প্রকাশিত হয়েছে!'
+                                  : 'খসড়া প্রয়োজন সংরক্ষিত হয়েছে!'),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.handyman_outlined, color: Color(0xFF10B981)),
+                ),
+                title: Text(
+                  'আমি সেবা দিব (সেবাদাতা)',
+                  style: AppTypography.mediumHeading2.copyWith(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('সেবাদাতা হিসেবে প্রোফাইল নিবন্ধন বা ড্যাশবোর্ড দেখুন'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ProviderDashboardScreen()),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _handleLogout() async {
@@ -284,6 +382,153 @@ class _AuthHomeScreenState extends State<AuthHomeScreen> {
                   );
                 },
               ),
+              const SizedBox(height: 16),
+
+              // =======================================================
+              // PHASE 6 (Demand) & PHASE 8 (Offer) QUICK ACTION HUB
+              // =======================================================
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.post_add_rounded, color: AppColors.primary, size: 20),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              'আমার প্রয়োজন ও প্রস্তাব',
+                              style: AppTypography.largeHeading3.copyWith(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF0F172A),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F766E).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'Phase 6 & 8',
+                            style: AppTypography.caption.copyWith(
+                              color: const Color(0xFF0F766E),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'আপনার যে কোনো সেবার প্রয়োজন প্রকাশ করুন এবং দক্ষ সেবাদাতাদের থেকে সরাসরি প্রস্তাব ও পাল্টা প্রস্তাব পান।',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: const Color(0xFF64748B),
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => CreateDemandScreen(
+                                    onSubmit: (data, publishNow) {
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(publishNow
+                                              ? 'প্রয়োজন সফলভাবে প্রকাশিত হয়েছে!'
+                                              : 'খসড়া প্রয়োজন সংরক্ষিত হয়েছে!'),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.add, size: 18, color: Colors.white),
+                            label: const Text(
+                              'নতুন প্রয়োজন',
+                              style: TextStyle(
+                                fontFamily: 'BalooDa2',
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 3,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const OfferListScreen(),
+                                ),
+                              );
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              side: const BorderSide(color: Color(0xFF0F766E)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.local_offer_outlined, size: 16, color: Color(0xFF0F766E)),
+                            label: const Text(
+                              'প্রস্তাবসমূহ',
+                              style: TextStyle(
+                                fontFamily: 'BalooDa2',
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0F766E),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
               const SizedBox(height: 16),
 
               // =======================================================
@@ -711,6 +956,18 @@ class _AuthHomeScreenState extends State<AuthHomeScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showPostBottomSheet,
+        backgroundColor: AppColors.primary,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: Text(
+          'আমার পোস্ট',
+          style: AppTypography.mediumHeading3.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),

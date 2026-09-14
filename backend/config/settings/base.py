@@ -51,6 +51,8 @@ LOCAL_APPS = [
     'apps.categories',
     'apps.providers',
     'apps.demands',
+    'apps.matching',
+    'apps.offers',
 ]
 
 # Custom User Model for SebaCox

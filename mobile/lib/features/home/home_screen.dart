@@ -12,6 +12,9 @@ import '../../shared/widgets/status_card.dart';
 import '../provider/screens/provider_list_screen.dart';
 import '../provider/screens/provider_registration_flow_screen.dart';
 import '../provider/screens/provider_dashboard_screen.dart';
+import '../demand/screens/create_demand_screen.dart';
+import '../demand/screens/my_demand_screen.dart';
+import '../offers/screens/offer_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -78,14 +81,29 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: const Icon(Icons.search, color: AppColors.primary),
                 ),
                 title: Text(
-                  'আমি সেবা নিব',
+                  'আমি সেবা নিব (আমার প্রয়োজন)',
                   style: AppTypography.mediumHeading2.copyWith(fontWeight: FontWeight.bold),
                 ),
-                subtitle: const Text('আপনার প্রয়োজনীয় সেবার চাহিদা বা অনুরোধ পোস্ট করুন (Phase 6)'),
+                subtitle: const Text('নতুন প্রয়োজন পোস্ট করুন বা আপনার পূর্বের প্রয়োজন দেখুন'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 14),
                 onTap: () {
                   Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('চাহিদা পোস্ট ইঞ্জিন পরবর্তী ধাপে উন্মুক্ত হবে।')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CreateDemandScreen(
+                        onSubmit: (data, publishNow) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(publishNow
+                                  ? 'প্রয়োজন সফলভাবে প্রকাশিত হয়েছে!'
+                                  : 'খসড়া প্রয়োজন সংরক্ষিত হয়েছে!'),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   );
                 },
               ),
@@ -100,15 +118,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: const Icon(Icons.handyman_outlined, color: Color(0xFF10B981)),
                 ),
                 title: Text(
-                  'আমি সেবা দিব',
+                  'আমি সেবা দিব (সেবাদাতা)',
                   style: AppTypography.mediumHeading2.copyWith(fontWeight: FontWeight.bold),
                 ),
-                subtitle: const Text('সেবাদাতা হিসেবে নতুন প্রোফাইল নিবন্ধন করুন'),
+                subtitle: const Text('সেবাদাতা হিসেবে প্রোফাইল নিবন্ধন বা ড্যাশবোর্ড দেখুন'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 14),
                 onTap: () {
                   Navigator.pop(ctx);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const ProviderRegistrationFlowScreen()),
+                    MaterialPageRoute(builder: (_) => const ProviderDashboardScreen()),
                   );
                 },
               ),
@@ -302,6 +321,96 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               const SizedBox(height: 24),
+
+              // Phase 6 & Phase 8 Demand and Offer Quick Action Panel
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'প্রয়োজন ও প্রস্তাব (Phase 6 & 8)',
+                          style: AppTypography.mediumHeading2.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'ম্যাচ থেকে প্রস্তাব',
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
+                            icon: const Icon(Icons.add_circle_outline, size: 16, color: Colors.white),
+                            label: const Text('নতুন প্রয়োজন', style: TextStyle(color: Colors.white, fontSize: 13)),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => CreateDemandScreen(
+                                    onSubmit: (data, publishNow) {
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(publishNow
+                                              ? 'প্রয়োজন সফলভাবে প্রকাশিত হয়েছে!'
+                                              : 'খসড়া প্রয়োজন সংরক্ষিত হয়েছে!'),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
+                            icon: const Icon(Icons.local_offer_outlined, size: 16, color: Color(0xFF0F766E)),
+                            label: const Text('প্রস্তাবসমূহ', style: TextStyle(color: Color(0xFF0F766E), fontSize: 13)),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const OfferListScreen()),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
 
               // Provider Foundation Quick Action Panel
               Container(

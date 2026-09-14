@@ -173,7 +173,15 @@ class Demand(models.Model):
         null=True,
         blank=True,
         related_name='demands',
-        help_text="প্রয়োজনের ইউনিয়ন / পৌরসভা ওয়ার্ড"
+        help_text="প্রয়োজনের ইউনিয়ন"
+    )
+    municipality = models.ForeignKey(
+        'locations.Municipality',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='demands',
+        help_text="প্রয়োজনের পৌরসভা"
     )
     ward = models.ForeignKey(
         'locations.Ward',
@@ -182,6 +190,14 @@ class Demand(models.Model):
         blank=True,
         related_name='demands',
         help_text="প্রয়োজনের নির্দিষ্ট ওয়ার্ড"
+    )
+    locality = models.ForeignKey(
+        'locations.Locality',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='demands',
+        help_text="প্রয়োজনের পাড়া / মহল্লা / গ্রাম / লোকালিটি"
     )
     geo_location = models.ForeignKey(
         'locations.GeoLocation',

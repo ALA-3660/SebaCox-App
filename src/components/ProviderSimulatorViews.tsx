@@ -12,13 +12,15 @@ import {
   Check, 
   X, 
   ChevronRight, 
+  ChevronDown,
   Sparkles,
   SlidersHorizontal,
   Layers,
   MapPin,
   Building2,
   Users,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import { 
   MockProvider, 
@@ -26,6 +28,7 @@ import {
   INITIAL_MOCK_PROVIDERS 
 } from '../data/providerMockData';
 import { INITIAL_SERVICES } from '../data/taxonomyMockData';
+import { SEBACOX_MASTER_CATEGORIES, MasterCategory, ALL_MASTER_SUB_CATEGORIES } from '../data/categoryMasterData';
 import { APP_BRAND } from '../constants/brand';
 
 // -----------------------------------------------------------------------------
@@ -296,18 +299,191 @@ export const ProviderRegistrationView: React.FC<ProviderRegistrationViewProps> =
   const [bio, setBio] = useState('বাসাবাড়ির লাইটিং, ফ্যান ও মোটর ওয়্যারিংয়ে অভিজ্ঞ টেকনিশিয়ান।');
   const [experienceYears, setExperienceYears] = useState(4);
 
-  // Step 2: Service Selection
-  const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([1, 2]);
+  // Step 2: Cascading Taxonomy (Main Category -> Sub-category)
+  const [categoriesList, setCategoriesList] = useState<MasterCategory[]>(SEBACOX_MASTER_CATEGORIES);
+  const [isLoadingCategories, setIsLoadingCategories] = useState<boolean>(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(1);
+  const [selectedCategoryNameBn, setSelectedCategoryNameBn] = useState<string>('ইলেকট্রিক্যাল ও ওয়্যারিং');
+
+  const [subcategoriesList, setSubcategoriesList] = useState<any[]>([]);
+  const [isLoadingSubcategories, setIsLoadingSubcategories] = useState<boolean>(false);
+  const [subcategoriesError, setSubcategoriesError] = useState<string | null>(null);
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<number | null>(101);
+  const [selectedSubcategoryNameBn, setSelectedSubcategoryNameBn] = useState<string | null>('বাসাবাড়ির সাধারণ ওয়্যারিং ও মেরামত');
+
+  const [subcatSearchTerm, setSubcatSearchTerm] = useState<string>('');
+  const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([101]);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Fetch initial Master Categories list dynamically from backend API
+  React.useEffect(() => {
+    let isMounted = true;
+    setIsLoadingCategories(true);
+    fetch('/api/v1/categories?include_inactive=false')
+      .then(res => res.json())
+      .then(json => {
+        if (!isMounted) return;
+        if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
+          setCategoriesList(json.data);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setIsLoadingCategories(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Fetch subcategories for a given category
+  const fetchSubcategories = (catId: number) => {
+    setIsLoadingSubcategories(true);
+    setSubcategoriesError(null);
+
+    fetch(`/api/v1/categories/${catId}/subcategories`)
+      .then(res => {
+        if (!res.ok) throw new Error('Network error');
+        return res.json();
+      })
+      .then(json => {
+        if (json && json.success && Array.isArray(json.data)) {
+          const activeSorted = json.data
+            .filter((s: any) => s.is_active !== false && s.isActive !== false)
+            .sort((a: any, b: any) => (a.sort_order || a.sortOrder || 0) - (b.sort_order || b.sortOrder || 0));
+          setSubcategoriesList(activeSorted);
+        } else {
+          // Fallback to local master taxonomy
+          const parentCat = categoriesList.find(c => c.id === catId);
+          const fallbackSubs = (parentCat?.subCategories || []).filter(s => s.isActive !== false);
+          setSubcategoriesList(fallbackSubs);
+        }
+      })
+      .catch(() => {
+        const parentCat = categoriesList.find(c => c.id === catId);
+        if (parentCat && parentCat.subCategories && parentCat.subCategories.length > 0) {
+          setSubcategoriesList(parentCat.subCategories.filter(s => s.isActive !== false));
+        } else {
+          setSubcategoriesError('সাব-ক্যাটাগরি লোড করা যায়নি। আবার চেষ্টা করুন।');
+        }
+      })
+      .finally(() => {
+        setIsLoadingSubcategories(false);
+      });
+  };
+
+  // Initial subcategory load for default category (if any)
+  React.useEffect(() => {
+    if (selectedCategoryId) {
+      fetchSubcategories(selectedCategoryId);
+    }
+  }, []);
+
+  // Handle Main Category Change - strictly cascading & resetting subcategory
+  const handleCategoryChange = (catId: number | null) => {
+    setSelectedCategoryId(catId);
+    // ১. পূর্ববর্তী সাব-ক্যাটাগরি নির্বাচন অবশ্যই রিসেট হবে
+    setSelectedSubcategoryId(null);
+    setSelectedSubcategoryNameBn(null);
+    setSelectedServiceIds([]);
+    setSubcatSearchTerm('');
+    setSubcategoriesError(null);
+    setValidationError(null);
+
+    if (!catId) {
+      setSelectedCategoryNameBn('');
+      setSubcategoriesList([]);
+      return;
+    }
+
+    const foundCat = categoriesList.find(c => c.id === catId);
+    setSelectedCategoryNameBn(foundCat?.nameBn || '');
+
+    // ২. নতুন ক্যাটাগরির সাব-ক্যাটাগরি ফেচ করা
+    fetchSubcategories(catId);
+  };
+
+  // Handle Sub-category Change
+  const handleSubcategoryChange = (subId: number | null) => {
+    setSelectedSubcategoryId(subId);
+    setValidationError(null);
+
+    if (!subId) {
+      setSelectedSubcategoryNameBn(null);
+      setSelectedServiceIds([]);
+      return;
+    }
+
+    const foundSub = subcategoriesList.find((s: any) => s.id === subId);
+    const subName = foundSub?.name_bn || foundSub?.nameBn || '';
+    setSelectedSubcategoryNameBn(subName);
+
+    // Primary service sync
+    if (!selectedServiceIds.includes(subId)) {
+      setSelectedServiceIds([subId]);
+    }
+  };
 
   // Step 3: Coverage Areas
   const [selectedAreaNames, setSelectedAreaNames] = useState<string[]>(['কক্সবাজার সদর', 'রামু']);
   const [primaryAreaName, setPrimaryAreaName] = useState<string>('কক্সবাজার সদর');
 
   const handleNext = () => {
-    if (step < 4) {
-      setStep((prev) => (prev + 1) as any);
-    } else {
-      // Complete Registration
+    // Validation for Step 1
+    if (step === 1) {
+      if (!businessName.trim() || !ownerName.trim()) {
+        setValidationError('অনুগ্রহ করে প্রতিষ্ঠানের নাম ও মালিকের নাম লিখুন।');
+        return;
+      }
+      setValidationError(null);
+      setStep(2);
+      return;
+    }
+
+    // Validation for Step 2
+    if (step === 2) {
+      if (!selectedCategoryId) {
+        setValidationError('অনুগ্রহ করে প্রধান ক্যাটাগরি নির্বাচন করুন।');
+        return;
+      }
+      if (!selectedSubcategoryId && selectedServiceIds.length === 0) {
+        setValidationError('অনুগ্রহ করে সাব-ক্যাটাগরি নির্বাচন করুন।');
+        return;
+      }
+      setValidationError(null);
+      setStep(3);
+      return;
+    }
+
+    if (step === 3) {
+      if (selectedAreaNames.length === 0) {
+        setValidationError('কমপক্ষে একটি সেবা এলাকা নির্বাচন করুন।');
+        return;
+      }
+      setValidationError(null);
+      setStep(4);
+      return;
+    }
+
+    if (step === 4) {
+      // Complete Registration with dynamic mapped taxonomy
+      const mappedServices = (selectedServiceIds.length > 0 ? selectedServiceIds : (selectedSubcategoryId ? [selectedSubcategoryId] : [])).map((sid) => {
+        let foundSub: any = subcategoriesList.find((s: any) => s.id === sid);
+        if (!foundSub) {
+          foundSub = ALL_MASTER_SUB_CATEGORIES.find(s => s.id === sid);
+        }
+        return {
+          id: sid,
+          name_bn: foundSub?.name_bn || foundSub?.nameBn || selectedSubcategoryNameBn || 'সেবা',
+          name_en: foundSub?.name_en || foundSub?.nameEn || 'Service',
+          category_id: selectedCategoryId || 1,
+          category_name_bn: selectedCategoryNameBn || 'ক্যাটাগরি',
+          pricing_model: 'FIXED' as const,
+          base_price: 500,
+          is_active: true
+        };
+      });
+
       const newProv: MockProvider = {
         id: Date.now(),
         business_name: businessName,
@@ -330,30 +506,47 @@ export const ProviderRegistrationView: React.FC<ProviderRegistrationViewProps> =
           upazila_name_en: a,
           is_primary: a === primaryAreaName
         })),
-        services: selectedServiceIds.map((sid) => {
-          const s = INITIAL_SERVICES.find(x => x.id === sid);
-          return {
-            id: sid,
-            name_bn: s?.name_bn || 'সার্ভিস',
-            name_en: s?.name_en || 'Service',
-            category_name_bn: 'বাসাবাড়ির মেরামত',
-            pricing_model: 'FIXED',
-            base_price: 500,
-            is_active: true
-          };
-        }),
+        services: mappedServices,
         created_at: new Date().toISOString().split('T')[0]
       };
+
+      // POST to backend API for validation and registration
+      fetch('/api/v1/providers/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          business_name: businessName,
+          owner_name: ownerName,
+          category_id: selectedCategoryId,
+          subcategory_id: selectedSubcategoryId,
+          service_ids: selectedServiceIds,
+          primary_area: primaryAreaName,
+          service_areas: selectedAreaNames
+        })
+      }).catch(() => {});
+
       onComplete(newProv);
     }
   };
+
+  // Filtered subcategories for quick search / trade tags
+  const filteredSubcategories = useMemo(() => {
+    if (!subcatSearchTerm.trim()) return subcategoriesList;
+    const term = subcatSearchTerm.toLowerCase().trim();
+    return subcategoriesList.filter((sc: any) => {
+      const nameBn = (sc.name_bn || sc.nameBn || '').toLowerCase();
+      const nameEn = (sc.name_en || sc.nameEn || '').toLowerCase();
+      const slug = (sc.slug || '').toLowerCase();
+      return nameBn.includes(term) || nameEn.includes(term) || slug.includes(term);
+    });
+  }, [subcategoriesList, subcatSearchTerm]);
 
   return (
     <div className="flex flex-col gap-3 font-tiro py-1">
       {/* Top Header */}
       <div className="flex items-center justify-between border-b border-slate-200 pb-2">
         <button
-          onClick={step === 1 ? onBack : () => setStep((prev) => (prev - 1) as any)}
+          onClick={step === 1 ? onBack : () => { setValidationError(null); setStep((prev) => (prev - 1) as any); }}
           className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-900 font-bold cursor-pointer font-baloo"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
@@ -372,12 +565,20 @@ export const ProviderRegistrationView: React.FC<ProviderRegistrationViewProps> =
         {[1, 2, 3, 4].map((s) => (
           <div
             key={s}
-            className={`h-1.5 flex-1 rounded-full ${
+            className={`h-1.5 flex-1 rounded-full transition-all ${
               s <= step ? 'bg-teal-700' : 'bg-slate-200'
             }`}
           />
         ))}
       </div>
+
+      {/* Validation Error Message */}
+      {validationError && (
+        <div className="flex items-center gap-2 p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-tiro">
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>{validationError}</span>
+        </div>
+      )}
 
       {/* STEP 1: General Profile */}
       {step === 1 && (
@@ -391,26 +592,26 @@ export const ProviderRegistrationView: React.FC<ProviderRegistrationViewProps> =
 
           <div>
             <label className="text-[11px] font-bold text-slate-700 block mb-1 font-tiro">
-              ব্যবসা / প্রতিষ্ঠানের নাম
+              ব্যবসা / প্রতিষ্ঠানের নাম *
             </label>
             <input
               type="text"
               value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-tiro"
+              onChange={(e) => { setBusinessName(e.target.value); setValidationError(null); }}
+              className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-tiro focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
               placeholder="যেমন: সৈকত ইলেকট্রিক্যাল"
             />
           </div>
 
           <div>
             <label className="text-[11px] font-bold text-slate-700 block mb-1 font-tiro">
-              মালিক বা সেবাদাতার নাম
+              মালিক বা সেবাদাতার নাম *
             </label>
             <input
               type="text"
               value={ownerName}
-              onChange={(e) => setOwnerName(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-tiro"
+              onChange={(e) => { setOwnerName(e.target.value); setValidationError(null); }}
+              className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-tiro focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
             />
           </div>
 
@@ -422,7 +623,7 @@ export const ProviderRegistrationView: React.FC<ProviderRegistrationViewProps> =
               <select
                 value={providerType}
                 onChange={(e) => setProviderType(e.target.value as any)}
-                className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-tiro"
+                className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-tiro cursor-pointer"
               >
                 <option value="INDIVIDUAL">ব্যক্তিগত (Individual)</option>
                 <option value="BUSINESS">ব্যবসায়িক (Business)</option>
@@ -450,59 +651,280 @@ export const ProviderRegistrationView: React.FC<ProviderRegistrationViewProps> =
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               rows={2}
-              className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-tiro"
+              className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-tiro focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
             />
           </div>
         </div>
       )}
 
-      {/* STEP 2: Service Selection */}
+      {/* STEP 2: Cascading Taxonomy (Main Category -> Sub-category) */}
       {step === 2 && (
-        <div className="space-y-2.5">
+        <div className="space-y-3 font-tiro">
           <div className="bg-teal-50 p-2.5 rounded-xl border border-teal-200 text-xs">
-            <span className="font-bold text-teal-900 block font-baloo">ধাপ ২: সেবা নির্বাচন ও মূল্য নির্ধারণ</span>
+            <span className="font-bold text-teal-900 block font-baloo">ধাপ ২: প্রধান ক্যাটাগরি ও সাব-ক্যাটাগরি নির্বাচন</span>
             <span className="text-[11px] text-teal-800 font-tiro">
-              মাস্টার ট্যাক্সোনমি থেকে আপনি যে সেবাগুলো দিতে চান তা নির্বাচন করুন।
+              SebaCox সেন্ট্রালাইজড মাস্টার ট্যাক্সোনমি থেকে আপনার প্রধান ক্যাটাগরি নির্বাচন করুন এবং এর অধীনস্থ নির্দিষ্ট সাব-ক্যাটাগরি বাছাই করুন।
             </span>
           </div>
 
-          <div className="space-y-2 max-h-[300px] overflow-y-auto pr-0.5">
-            {INITIAL_SERVICES.slice(0, 8).map((srv) => {
-              const isSelected = selectedServiceIds.includes(srv.id);
-              return (
-                <div
-                  key={srv.id}
-                  onClick={() => {
-                    if (isSelected) {
-                      setSelectedServiceIds(selectedServiceIds.filter(id => id !== srv.id));
-                    } else {
-                      setSelectedServiceIds([...selectedServiceIds, srv.id]);
-                    }
-                  }}
-                  className={`p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between ${
-                    isSelected
-                      ? 'bg-teal-50/80 border-teal-500 shadow-xs'
-                      : 'bg-white border-slate-200 hover:border-slate-300'
-                  }`}
+          {/* ১. প্রধান ক্যাটাগরি ড্রপডাউন (Main Category Dropdown) */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-800 font-tiro">
+                প্রধান ক্যাটাগরি নির্বাচন করুন *
+              </label>
+              {isLoadingCategories ? (
+                <span className="text-[10px] text-teal-600 font-medium font-tiro">লোড হচ্ছে...</span>
+              ) : (
+                <span className="text-[10px] text-slate-500 font-medium font-tiro">
+                  {categoriesList.length}টি ক্যাটাগরি উপলব্ধ
+                </span>
+              )}
+            </div>
+
+            <div className="relative">
+              <select
+                id="provider-reg-main-category"
+                value={selectedCategoryId || ''}
+                onChange={(e) => {
+                  const val = e.target.value ? Number(e.target.value) : null;
+                  handleCategoryChange(val);
+                }}
+                className="w-full px-3 py-2.5 bg-white border border-slate-300 hover:border-teal-500 focus:border-teal-600 focus:ring-1 focus:ring-teal-600 rounded-xl text-xs font-baloo font-bold text-slate-800 shadow-xs appearance-none transition pr-8 cursor-pointer"
+              >
+                <option value="" className="text-slate-400 font-tiro font-normal">
+                  -- প্রধান ক্যাটাগরি নির্বাচন করুন --
+                </option>
+                {categoriesList.map((cat) => {
+                  const subCount = cat.subCategories?.length ?? (cat as any).services?.length ?? 0;
+                  return (
+                    <option key={cat.id} value={cat.id} className="text-slate-800 font-baloo">
+                      {cat.nameBn} {subCount > 0 ? `(${subCount}টি সেবা)` : ''}
+                    </option>
+                  );
+                })}
+              </select>
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                <ChevronDown className="w-4 h-4" />
+              </div>
+            </div>
+            <p className="text-[10px] text-slate-400 font-tiro">
+              আপনার ব্যবসার মূল কাজের ক্ষেত্র বা প্রধান ট্রেড সিলেক্ট করুন।
+            </p>
+          </div>
+
+          {/* ২. সাব-ক্যাটাগরি ড্রপডাউন (Sub-category Dropdown - Cascading) */}
+          <div className="space-y-1.5 pt-0.5">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-800 font-tiro">
+                সাব-ক্যাটাগরি নির্বাচন করুন *
+              </label>
+              {isLoadingSubcategories && (
+                <span className="flex items-center gap-1 text-[10px] text-teal-600 font-medium font-tiro">
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  লোড হচ্ছে...
+                </span>
+              )}
+              {!isLoadingSubcategories && selectedCategoryId && subcategoriesList.length > 0 && (
+                <span className="text-[10px] text-slate-500 font-medium font-tiro">
+                  {subcategoriesList.length}টি সাব-ক্যাটাগরি
+                </span>
+              )}
+            </div>
+
+            <div className="relative">
+              <select
+                id="provider-reg-sub-category"
+                disabled={!selectedCategoryId || isLoadingSubcategories}
+                value={selectedSubcategoryId || ''}
+                onChange={(e) => {
+                  const val = e.target.value ? Number(e.target.value) : null;
+                  handleSubcategoryChange(val);
+                }}
+                className={`w-full px-3 py-2.5 border rounded-xl text-xs font-baloo font-bold shadow-xs appearance-none transition pr-8 ${
+                  !selectedCategoryId || isLoadingSubcategories
+                    ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                    : 'bg-white border-slate-300 hover:border-teal-500 focus:border-teal-600 focus:ring-1 focus:ring-teal-600 text-slate-800 cursor-pointer'
+                }`}
+              >
+                {!selectedCategoryId ? (
+                  <option value="" className="text-slate-400 font-tiro font-normal">
+                    প্রধান ক্যাটাগরি নির্বাচন করার পর সাব-ক্যাটাগরি নির্বাচন করুন
+                  </option>
+                ) : isLoadingSubcategories ? (
+                  <option value="" className="text-slate-400 font-tiro font-normal">
+                    সাব-ক্যাটাগরি লোড হচ্ছে...
+                  </option>
+                ) : subcategoriesError ? (
+                  <option value="" className="text-slate-400 font-tiro font-normal">
+                    সাব-ক্যাটাগরি লোড করা যায়নি
+                  </option>
+                ) : subcategoriesList.length === 0 ? (
+                  <option value="" className="text-slate-400 font-tiro font-normal">
+                    এই ক্যাটাগরির কোনো সাব-ক্যাটাগরি পাওয়া যায়নি।
+                  </option>
+                ) : (
+                  <>
+                    <option value="" className="text-slate-400 font-tiro font-normal">
+                      -- সাব-ক্যাটাগরি নির্বাচন করুন --
+                    </option>
+                    {subcategoriesList.map((sub) => (
+                      <option key={sub.id} value={sub.id} className="text-slate-800 font-baloo">
+                        {sub.name_bn || sub.nameBn} ({sub.name_en || sub.nameEn})
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                <ChevronDown className="w-4 h-4" />
+              </div>
+            </div>
+
+            {/* Subcategories Error Box with Retry */}
+            {subcategoriesError && (
+              <div className="flex items-center justify-between p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 font-tiro">
+                <span>{subcategoriesError}</span>
+                <button
+                  type="button"
+                  onClick={() => selectedCategoryId && fetchSubcategories(selectedCategoryId)}
+                  className="px-2 py-0.5 bg-amber-600 text-white rounded text-[11px] font-bold font-baloo hover:bg-amber-700 cursor-pointer"
                 >
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold text-slate-900 font-baloo">
-                      {srv.name_bn}
-                    </div>
-                    <div className="text-[10px] text-slate-500 font-mono">
-                      {srv.name_en}
-                    </div>
+                  পুনরায় চেষ্টা
+                </button>
+              </div>
+            )}
+
+            <p className="text-[10px] text-slate-400 font-tiro">
+              {!selectedCategoryId
+                ? 'সাব-ক্যাটাগরি দেখতে আগে উপরে একটি প্রধান ক্যাটাগরি নির্বাচন করুন।'
+                : 'নির্বাচিত প্রধান ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নির্দিষ্ট সেবা।'}
+            </p>
+          </div>
+
+          {/* ৩. দ্রুত অনুসন্ধান ও অতিরিক্ত দক্ষতা যোগ (Search & Multi-Service / Skill Selection) */}
+          {selectedCategoryId && subcategoriesList.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-slate-200/80">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-700 font-tiro">
+                  সাব-ক্যাটাগরি অনুসন্ধান ও অতিরিক্ত সেবা যোগ
+                </span>
+                {selectedServiceIds.length > 0 && (
+                  <span className="text-[10px] bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full font-bold font-baloo">
+                    {selectedServiceIds.length}টি সেবা নির্বাচিত
+                  </span>
+                )}
+              </div>
+
+              {/* Sub-category Search Input */}
+              <div className="relative">
+                <input
+                  type="text"
+                  value={subcatSearchTerm}
+                  onChange={(e) => setSubcatSearchTerm(e.target.value)}
+                  placeholder="🔍 সাব-ক্যাটাগরি খুঁজুন... (বাংলা বা ইংরেজিতে)"
+                  className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-baloo focus:border-teal-600 focus:ring-1 focus:ring-teal-600 shadow-xs"
+                />
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                {subcatSearchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setSubcatSearchTerm('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Filtered Sub-category Cards List */}
+              <div className="space-y-1.5 max-h-[190px] overflow-y-auto pr-0.5 border border-slate-200 rounded-xl p-2 bg-slate-50/50">
+                {filteredSubcategories.length === 0 ? (
+                  <div className="text-center py-4 text-slate-400 text-xs font-tiro">
+                    '{subcatSearchTerm}' নামে কোনো সাব-ক্যাটাগরি পাওয়া যায়নি
                   </div>
-                  <div className={`w-5 h-5 rounded-md flex items-center justify-center border shrink-0 ${
-                    isSelected 
-                      ? 'bg-teal-700 border-teal-700 text-white' 
-                      : 'border-slate-300 bg-white'
-                  }`}>
-                    {isSelected && <Check className="w-3.5 h-3.5" />}
-                  </div>
-                </div>
-              );
-            })}
+                ) : (
+                  filteredSubcategories.map((sub: any) => {
+                    const isPrimary = selectedSubcategoryId === sub.id;
+                    const isSelected = selectedServiceIds.includes(sub.id) || isPrimary;
+
+                    return (
+                      <div
+                        key={sub.id}
+                        onClick={() => {
+                          if (isPrimary) {
+                            // If primary, clicking toggles or keeps it
+                          } else if (isSelected) {
+                            setSelectedServiceIds(selectedServiceIds.filter((id) => id !== sub.id));
+                          } else {
+                            if (!selectedSubcategoryId) {
+                              setSelectedSubcategoryId(sub.id);
+                              setSelectedSubcategoryNameBn(sub.name_bn || sub.nameBn);
+                            }
+                            setSelectedServiceIds([...selectedServiceIds, sub.id]);
+                            setValidationError(null);
+                          }
+                        }}
+                        className={`p-2 rounded-lg border transition cursor-pointer flex items-center justify-between ${
+                          isPrimary
+                            ? 'bg-teal-100/90 border-teal-600 shadow-xs ring-1 ring-teal-500/50'
+                            : isSelected
+                            ? 'bg-teal-50 border-teal-400'
+                            : 'bg-white border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="min-w-0 pr-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-slate-900 font-baloo">
+                              {sub.name_bn || sub.nameBn}
+                            </span>
+                            {isPrimary && (
+                              <span className="text-[9px] bg-teal-800 text-white px-1.5 py-0.2 rounded font-bold font-baloo shrink-0">
+                                প্রধান
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-mono truncate">
+                            {sub.name_en || sub.nameEn}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {!isPrimary && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSubcategoryChange(sub.id);
+                              }}
+                              className="text-[9px] text-slate-600 hover:text-teal-800 bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded font-baloo cursor-pointer"
+                            >
+                              প্রধান করুন
+                            </button>
+                          )}
+                          <div
+                            className={`w-4 h-4 rounded flex items-center justify-center border ${
+                              isSelected
+                                ? 'bg-teal-700 border-teal-700 text-white'
+                                : 'border-slate-300 bg-white'
+                            }`}
+                          >
+                            {isSelected && <Check className="w-3 h-3" />}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Selection summary pill */}
+          <div className="flex items-center justify-between text-[11px] px-1 pt-1 font-tiro">
+            <span className="text-slate-600">
+              নির্বাচিত প্রধান সাব-ক্যাটাগরি: <strong className="text-teal-800 font-baloo">{selectedSubcategoryNameBn || 'চিহ্নিত করা হয়নি'}</strong>
+            </span>
           </div>
         </div>
       )}
@@ -593,16 +1015,26 @@ export const ProviderRegistrationView: React.FC<ProviderRegistrationViewProps> =
               <span className="font-bold text-slate-800">{ownerName} ({experienceYears} বছর)</span>
             </div>
             <div className="flex justify-between border-b border-slate-100 pb-1">
+              <span className="text-slate-500">প্রধান ক্যাটাগরি:</span>
+              <span className="font-bold text-teal-800">{selectedCategoryNameBn || 'ইলেকট্রিক্যাল ও ওয়্যারিং'}</span>
+            </div>
+            <div className="flex justify-between border-b border-slate-100 pb-1">
+              <span className="text-slate-500">প্রধান সাব-ক্যাটাগরি:</span>
+              <span className="font-bold text-teal-900">{selectedSubcategoryNameBn || 'বাসাবাড়ির সাধারণ ওয়্যারিং ও মেরামত'}</span>
+            </div>
+            <div className="flex justify-between border-b border-slate-100 pb-1">
               <span className="text-slate-500">প্রধান এলাকা:</span>
               <span className="font-bold text-teal-800">{primaryAreaName}</span>
             </div>
             <div className="flex justify-between border-b border-slate-100 pb-1">
-              <span className="text-slate-500">কভারেজ:</span>
+              <span className="text-slate-500">কভারেজ এলাকা:</span>
               <span className="font-bold text-slate-700">{selectedAreaNames.join(', ')}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">নির্বাচিত সেবা:</span>
-              <span className="font-bold text-teal-800">{selectedServiceIds.length}টি সেবা</span>
+              <span className="text-slate-500">মোট নির্বাচিত সেবা:</span>
+              <span className="font-bold text-teal-800">
+                {selectedServiceIds.length > 0 ? selectedServiceIds.length : (selectedSubcategoryId ? 1 : 0)}টি সেবা
+              </span>
             </div>
           </div>
 

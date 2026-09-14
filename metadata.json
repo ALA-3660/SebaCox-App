@@ -1,6 +1,6 @@
 {
   "name": "SebaCox",
-  "description": "SebaCox: প্রয়োজন থেকে সমাধান- এক অ্যাপেই। খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই। Phase 1-6 complete with Demand / “আমার প্রয়োজন” Engine Foundation and 224 automated tests passing.",
+  "description": "SebaCox: প্রয়োজন থেকে সমাধান- এক অ্যাপেই। খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই। Phase 1-7 complete with Matching Engine Foundation and 278 automated tests passing.",
   "requestFramePermissions": [
     "geolocation"
   ],

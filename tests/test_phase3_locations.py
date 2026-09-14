@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Phase 3 Location & Geographic Foundation Test Suite for SebaCox.
-"মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+"প্রয়োজন থেকে সমাধান- এক অ্যাপেই"
+"খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই"
 
 Comprehensive test suite verifying:
 1. SRID 4326 coordinate validation (latitude [-90, 90], longitude [-180, 180], out-of-range rejection)
@@ -70,7 +71,9 @@ except ImportError:
             return [(m.value, getattr(m, 'label', m.value)) for m in cls]
 
     dj_models.TextChoices = TextChoices
-    dj_models.Model = object
+    class MockModel:
+        def clean(self): pass
+    dj_models.Model = MockModel
     dj_models.CharField = lambda *a, **kw: None
     dj_models.BooleanField = lambda *a, **kw: None
     dj_models.DateTimeField = lambda *a, **kw: None
@@ -80,12 +83,18 @@ except ImportError:
     dj_models.PositiveSmallIntegerField = lambda *a, **kw: None
     dj_models.IntegerField = lambda *a, **kw: None
     dj_models.BigAutoField = lambda *a, **kw: None
+    dj_models.JSONField = lambda *a, **kw: None
     dj_models.CASCADE = 'CASCADE'
     dj_models.SET_NULL = 'SET_NULL'
     dj_models.UniqueConstraint = lambda *a, **kw: None
     dj_models.Index = lambda *a, **kw: None
     dj_models.Q = lambda *a, **kw: None
-    dj_models.QuerySet = object
+
+    class MockQuerySet:
+        @classmethod
+        def __class_getitem__(cls, item):
+            return cls
+    dj_models.QuerySet = MockQuerySet
 
     class ValidationError(Exception):
         def __init__(self, message, code=None, params=None):
@@ -129,6 +138,8 @@ except ImportError:
     rf_serializers.IntegerField = lambda *a, **kw: None
     rf_serializers.DecimalField = lambda *a, **kw: None
     rf_serializers.ChoiceField = lambda *a, **kw: None
+    rf_serializers.BooleanField = lambda *a, **kw: None
+    rf_serializers.ListField = lambda *a, **kw: None
     class MockAPIView:
         @classmethod
         def as_view(cls, *a, **kw):
@@ -464,6 +475,139 @@ test("Search normalization handles English 'Eidgaon'", normalize_search_text("  
 # 6. Verify Upazila count label in Location Selector
 test("Location Selector reflects exactly 9 available areas for Cox's Bazar", (
     "৯টি" in sim_content and "উপজেলা নির্বাচন করুন" in sim_content
+))
+
+# -----------------------------------------------------------------------------
+# 12. Production-Ready Expanded Hierarchy (Union, Municipality, Ward, Locality)
+# -----------------------------------------------------------------------------
+print("\n--- 12. Expanded Geographic Hierarchy & Cascading Validation ---")
+from apps.locations.constants import LocalityType, GeographicType
+from apps.locations.models import Municipality, Union, Ward, Locality, CityCorporation, District, Upazila
+from apps.locations.selectors import get_child_locations
+
+# 1. LocalityType Enum verification
+test("LocalityType defines all required sub-types", (
+    hasattr(LocalityType, 'PARA') and
+    hasattr(LocalityType, 'MOHOLLA') and
+    hasattr(LocalityType, 'VILLAGE') and
+    hasattr(LocalityType, 'BAZAR') and
+    hasattr(LocalityType, 'RESIDENTIAL') and
+    hasattr(LocalityType, 'LOCAL_AREA') and
+    hasattr(LocalityType, 'OTHER')
+))
+
+# 2. Ward single-parent validation
+valid_ward = Ward()
+valid_ward.ward_number = 1
+valid_ward.municipality_id = 1
+valid_ward.city_corporation_id = None
+valid_ward.union_id = None
+try:
+    valid_ward.clean()
+    ward_valid_passed = True
+except Exception:
+    ward_valid_passed = False
+test("Ward with single parent (Municipality) passes clean()", ward_valid_passed)
+
+invalid_ward_no_parent = Ward()
+invalid_ward_no_parent.ward_number = 1
+invalid_ward_no_parent.municipality_id = None
+invalid_ward_no_parent.city_corporation_id = None
+invalid_ward_no_parent.union_id = None
+try:
+    invalid_ward_no_parent.clean()
+    ward_no_parent_caught = False
+except Exception:
+    ward_no_parent_caught = True
+test("Ward without parent is rejected by clean()", ward_no_parent_caught)
+
+invalid_ward_multi_parent = Ward()
+invalid_ward_multi_parent.ward_number = 1
+invalid_ward_multi_parent.municipality_id = 1
+invalid_ward_multi_parent.union_id = 2
+try:
+    invalid_ward_multi_parent.clean()
+    ward_multi_parent_caught = False
+except Exception:
+    ward_multi_parent_caught = True
+test("Ward with multiple parents is rejected by clean()", ward_multi_parent_caught)
+
+# 3. Locality hierarchy validation
+valid_loc = Locality()
+valid_loc.upazila_id = 1
+valid_loc.municipality_id = None
+valid_loc.union_id = None
+valid_loc.ward_id = None
+try:
+    valid_loc.clean()
+    loc_valid_passed = True
+except Exception:
+    loc_valid_passed = False
+test("Locality with valid Upazila passes clean()", loc_valid_passed)
+
+invalid_loc_no_upazila = Locality()
+invalid_loc_no_upazila.upazila_id = None
+try:
+    invalid_loc_no_upazila.clean()
+    loc_no_upazila_caught = False
+except Exception:
+    loc_no_upazila_caught = True
+test("Locality without Upazila is rejected by clean()", loc_no_upazila_caught)
+
+# 4. Cascading Children API & Selector Verification
+from apps.locations.urls import urlpatterns as loc_urlpatterns
+children_url_exists = any('children/' in str(p.pattern) for p in loc_urlpatterns)
+test("GET /api/v1/locations/children/ endpoint registered in urls", children_url_exists)
+
+# 5. Cascading Location Selector Widget Verification
+cascading_widget_file = ROOT_DIR / 'mobile' / 'lib' / 'features' / 'location' / 'widgets' / 'cascading_location_selector.dart'
+test("Flutter CascadingLocationSelector widget file exists", cascading_widget_file.exists())
+
+with open(cascading_widget_file, 'r', encoding='utf-8') as f:
+    cascading_content = f.read()
+
+test("Cascading selector supports Division -> District -> Upazila -> Union/Municipality -> Ward -> Locality", (
+    '_selectedDivision' in cascading_content and
+    '_selectedDistrict' in cascading_content and
+    '_selectedUpazila' in cascading_content and
+    '_selectedUnion' in cascading_content and
+    '_selectedMunicipality' in cascading_content and
+    '_selectedWard' in cascading_content and
+    '_selectedLocality' in cascading_content
+))
+
+test("Cascading selector handles Bengali typography and reset cascading states", (
+    'বিভাগ' in cascading_content and
+    'জেলা' in cascading_content and
+    'উপজেলা' in cascading_content and
+    'ইউনিয়ন' in cascading_content and
+    'পৌরসভা' in cascading_content and
+    'ওয়ার্ড' in cascading_content and
+    'লোকালিটি' in cascading_content
+))
+
+# 6. Mock API in vite.config.ts supports all granular endpoints
+test("vite.config.ts implements municipalities endpoint", "/api/v1/locations/municipalities" in vite_content)
+test("vite.config.ts implements city-corporations endpoint", "/api/v1/locations/city-corporations" in vite_content)
+test("vite.config.ts implements wards endpoint", "/api/v1/locations/wards" in vite_content)
+test("vite.config.ts implements localities endpoint", "/api/v1/locations/localities" in vite_content)
+test("vite.config.ts implements children cascading endpoint", "/api/v1/locations/children" in vite_content)
+
+# 7. Khurushkul Ward 1-9 Locality Verification & Ward 5 Correction
+test("Khurushkul Ward 5 has source-verified Mamun Para (মামুন পাড়া)", (
+    'মামুন পাড়া' in vite_content and
+    'Mamun Para' in vite_content
+))
+test("Khurushkul seed command includes official Mamun Para for Ward 5", (
+    'মামুন পাড়া' in open(ROOT_DIR / 'backend' / 'apps' / 'locations' / 'management' / 'commands' / 'seed_coxsbazar_sadar_master.py', 'r', encoding='utf-8').read()
+))
+test("DemandSimulatorViews.tsx includes Mamun Para for Khurushkul Ward 5 (10405)", (
+    '10405' in open(ROOT_DIR / 'src' / 'components' / 'DemandSimulatorViews.tsx', 'r', encoding='utf-8').read() and
+    'মামুন পাড়া' in open(ROOT_DIR / 'src' / 'components' / 'DemandSimulatorViews.tsx', 'r', encoding='utf-8').read()
+))
+test("DemandSimulatorViews.tsx implements dynamic locality fetching from API", (
+    '/api/v1/locations/localities' in open(ROOT_DIR / 'src' / 'components' / 'DemandSimulatorViews.tsx', 'r', encoding='utf-8').read() and
+    'availableLocalities' in open(ROOT_DIR / 'src' / 'components' / 'DemandSimulatorViews.tsx', 'r', encoding='utf-8').read()
 ))
 
 # -----------------------------------------------------------------------------

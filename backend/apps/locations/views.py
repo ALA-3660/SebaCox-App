@@ -15,7 +15,9 @@ from .selectors import (
     get_unions_by_upazila,
     get_wards,
     get_localities,
+    get_postal_locations,
     get_user_locations_qs,
+    get_child_locations,
 )
 from .serializers import (
     CountrySerializer,
@@ -27,6 +29,7 @@ from .serializers import (
     UnionSerializer,
     WardSerializer,
     LocalitySerializer,
+    PostalLocationSerializer,
     UserLocationSerializer,
     LocationSearchItemSerializer,
     NearbyCalculateRequestSerializer,
@@ -147,9 +150,9 @@ class WardListView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        municipality_id = request.query_params.get('municipality')
-        union_id = request.query_params.get('union')
-        city_corporation_id = request.query_params.get('city_corporation')
+        municipality_id = request.query_params.get('municipality_id') or request.query_params.get('municipality')
+        union_id = request.query_params.get('union_id') or request.query_params.get('union')
+        city_corporation_id = request.query_params.get('city_corporation_id') or request.query_params.get('city_corporation')
         wards = get_wards(
             municipality_id=municipality_id,
             union_id=union_id,
@@ -167,10 +170,10 @@ class LocalityListView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        upazila_id = request.query_params.get('upazila')
-        ward_id = request.query_params.get('ward')
-        union_id = request.query_params.get('union')
-        municipality_id = request.query_params.get('municipality')
+        upazila_id = request.query_params.get('upazila_id') or request.query_params.get('upazila')
+        ward_id = request.query_params.get('ward_id') or request.query_params.get('ward')
+        union_id = request.query_params.get('union_id') or request.query_params.get('union')
+        municipality_id = request.query_params.get('municipality_id') or request.query_params.get('municipality')
         localities = get_localities(
             upazila_id=upazila_id,
             ward_id=ward_id,
@@ -181,6 +184,30 @@ class LocalityListView(views.APIView):
         return StandardResponse.success(
             data=serializer.data,
             message="এলাকাসমূহের তালিকা সফলভাবে প্রাপ্ত হয়েছে।"
+        )
+
+
+class PostalLocationListView(views.APIView):
+    """GET /api/v1/locations/postal-locations/?district=&upazila=&union=&municipality=&post_code= - List post offices."""
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        district_id = request.query_params.get('district')
+        upazila_id = request.query_params.get('upazila')
+        union_id = request.query_params.get('union')
+        municipality_id = request.query_params.get('municipality')
+        post_code = request.query_params.get('post_code')
+        postals = get_postal_locations(
+            district_id=district_id,
+            upazila_id=upazila_id,
+            union_id=union_id,
+            municipality_id=municipality_id,
+            post_code=post_code,
+        )
+        serializer = PostalLocationSerializer(postals, many=True)
+        return StandardResponse.success(
+            data=serializer.data,
+            message="ডাকঘর তালিকা সফলভাবে প্রাপ্ত হয়েছে।"
         )
 
 
@@ -300,6 +327,8 @@ class UserSelectedLocationView(views.APIView):
             municipality_id=data.get('municipality_id'),
             ward_id=data.get('ward_id'),
             locality_id=data.get('locality_id'),
+            postal_location_id=data.get('postal_location_id'),
+            detailed_address=data.get('detailed_address', ''),
             label=data.get('label', '')
         )
 
@@ -349,3 +378,69 @@ class UserCurrentLocationView(views.APIView):
             data=UserLocationSerializer(user_loc).data,
             message="ডিভাইসের বর্তমান অবস্থান সফলভাবে সংরক্ষিত হয়েছে।"
         )
+
+
+class LocationChildrenView(views.APIView):
+    """
+    GET /api/v1/locations/children/?parent_type=&parent_id=
+    Returns child location entities dynamically for cascading selectors.
+    Supported parent_type values:
+    - COUNTRY -> Divisions
+    - DIVISION -> Districts
+    - DISTRICT -> Upazilas
+    - UPAZILA -> Unions & Municipalities
+    - UNION -> Wards
+    - MUNICIPALITY -> Wards
+    - CITY_CORPORATION -> Wards
+    - WARD -> Localities
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        parent_type = (request.query_params.get('parent_type') or '').upper().strip()
+        parent_id_str = request.query_params.get('parent_id')
+
+        if not parent_type or not parent_id_str:
+            return StandardResponse.error(
+                message="parent_type এবং parent_id প্যারামিটার আবশ্যক।",
+                errors={"parent_type": ["Required"], "parent_id": ["Required"]},
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            parent_id = int(parent_id_str)
+        except (ValueError, TypeError):
+            return StandardResponse.error(
+                message="parent_id একটি বৈধ পূর্ণসংখ্যা হতে হবে।",
+                errors={"parent_id": ["Must be an integer"]},
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        children = get_child_locations(parent_type=parent_type, parent_id=parent_id)
+
+        if parent_type == 'COUNTRY':
+            data = DivisionSerializer(children, many=True).data
+        elif parent_type == 'DIVISION':
+            data = DistrictSerializer(children, many=True).data
+        elif parent_type == 'DISTRICT':
+            data = UpazilaSerializer(children, many=True).data
+        elif parent_type == 'UPAZILA':
+            data = {
+                'unions': UnionSerializer(children.get('unions', []), many=True).data if isinstance(children, dict) else [],
+                'municipalities': MunicipalitySerializer(children.get('municipalities', []), many=True).data if isinstance(children, dict) else [],
+                'postal_locations': PostalLocationSerializer(children.get('postal_locations', []), many=True).data if isinstance(children, dict) else [],
+            }
+        elif parent_type in ['UNION', 'MUNICIPALITY', 'CITY_CORPORATION']:
+            data = WardSerializer(children, many=True).data
+        elif parent_type == 'WARD':
+            data = LocalitySerializer(children, many=True).data
+        elif parent_type == 'POSTAL':
+            data = PostalLocationSerializer(children, many=True).data
+        else:
+            data = []
+
+        return StandardResponse.success(
+            data=data,
+            message="সাব-লোকেশন তালিকা সফলভাবে প্রাপ্ত হয়েছে।"
+        )
+
