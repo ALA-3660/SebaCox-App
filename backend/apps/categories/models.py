@@ -1,45 +1,54 @@
 """
-Category & Service Models for SebaCox.
-Universal Service Taxonomy & Capability Engine.
+Category, SubCategory & Service Models for SebaCox.
+Universal Service Taxonomy & Master Data Engine (Master Taxonomy v1.0).
 "প্রয়োজন থেকে সমাধান- এক অ্যাপেই"
 "খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই"
 """
+import unicodedata
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils.text import slugify
 
-from .constants import CategoryKind, ServiceType
+from .constants import CategoryKind, ServiceType, AliasTargetType, AliasLanguage
 from .validators import validate_slug, validate_no_circular_parent
+
+
+def normalize_alias_text(text: str) -> str:
+    """Normalizes alias query text in Bangla (Unicode NFC) and English (lowercase)."""
+    if not text:
+        return ''
+    cleaned = unicodedata.normalize('NFC', text.strip())
+    return cleaned.lower()
 
 
 class Category(models.Model):
     """
-    Universal hierarchical Category Model.
-    Supports arbitrarily deep taxonomy (Parent -> Subcategory -> Sub-subcategory).
-    Architecturally separates Public Service Categories from internal System Domains.
+    Universal Master Category Model (31 Master Categories).
+    Acts as the top-level architectural grouping.
+    Supports hierarchical tree structure and status control.
     """
     name_bn = models.CharField(
         max_length=150,
         db_index=True,
-        help_text="ক্যাটাগরির বাংলা নাম (e.g. স্বাস্থ্য ও চিকিৎসা, ডাক্তার)"
+        help_text="ক্যাটাগরির বাংলা নাম (e.g. নির্মাণ ও প্রকৌশল, স্বাস্থ্য ও চিকিৎসা)"
     )
     name_en = models.CharField(
         max_length=150,
         db_index=True,
-        help_text="English Category Name (e.g. Health & Medical, Doctors)"
+        help_text="English Category Name (e.g. Construction & Engineering, Health & Medical)"
     )
     slug = models.SlugField(
         max_length=160,
         unique=True,
         db_index=True,
         validators=[validate_slug],
-        help_text="Unique URL-safe identifier (e.g. health-medical, doctors)"
+        help_text="Unique URL-safe identifier (e.g. construction-engineering, health-medical)"
     )
     icon = models.CharField(
         max_length=100,
         blank=True,
         default='',
-        help_text="Icon identifier (e.g. activity, home, tool)"
+        help_text="Icon identifier (e.g. hammer, wrench, compass, activity)"
     )
     description_bn = models.TextField(
         blank=True,
@@ -58,7 +67,7 @@ class Category(models.Model):
         blank=True,
         related_name='children',
         db_index=True,
-        help_text="প্যারেন্ট ক্যাটাগরি (Parent Category)"
+        help_text="প্যারেন্ট ক্যাটাগরি (Parent Category for nested taxonomy)"
     )
     level = models.PositiveIntegerField(
         default=0,
@@ -68,7 +77,7 @@ class Category(models.Model):
     sort_order = models.PositiveIntegerField(
         default=0,
         db_index=True,
-        help_text="প্রদর্শনের ক্রম (Sorting display order)"
+        help_text="প্রদর্শনের ক্রম (Sorting display order 1-31)"
     )
     kind = models.CharField(
         max_length=30,
@@ -87,6 +96,11 @@ class Category(models.Model):
         db_index=True,
         help_text="হোমস্ক্রিন বা ফিচার্ড তালিকায় প্রদর্শন"
     )
+    is_popular = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="জনপ্রিয় ক্যাটাগরি হাইলাইট"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -97,6 +111,7 @@ class Category(models.Model):
         indexes = [
             models.Index(fields=['is_active', 'kind', 'parent', 'sort_order']),
             models.Index(fields=['is_featured', 'is_active']),
+            models.Index(fields=['is_popular', 'is_active']),
         ]
 
     def __str__(self):
@@ -114,7 +129,6 @@ class Category(models.Model):
         if self.parent_id:
             validate_no_circular_parent(self.id, self.parent_id, Category)
             self.level = self.parent.level + 1
-            # Inherit kind from parent if not explicitly changed
             if not self.kind and self.parent.kind:
                 self.kind = self.parent.kind
         else:
@@ -133,8 +147,106 @@ class Category(models.Model):
         return self.children.filter(is_active=True).count()
 
     @property
+    def active_subcategories_count(self) -> int:
+        return self.subcategories.filter(is_active=True).count()
+
+    @property
     def active_services_count(self) -> int:
         return self.services.filter(is_active=True).count()
+
+
+class SubCategory(models.Model):
+    """
+    Granular Master SubCategory Model (Master Taxonomy v1.0).
+    Every SubCategory strictly belongs to a single Master Category.
+    Cascades directly from Category in UI and APIs.
+    """
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.CASCADE,
+        related_name='subcategories',
+        db_index=True,
+        help_text="প্রধান ক্যাটাগরি (Parent Master Category)"
+    )
+    name_bn = models.CharField(
+        max_length=150,
+        db_index=True,
+        help_text="সাব-ক্যাটাগরির বাংলা নাম (e.g. নির্মাণ শ্রমিক ও মিস্ত্রি, রাজমিস্ত্রি)"
+    )
+    name_en = models.CharField(
+        max_length=150,
+        db_index=True,
+        help_text="English SubCategory Name (e.g. Masonry & Casting Labour)"
+    )
+    slug = models.SlugField(
+        max_length=160,
+        unique=True,
+        db_index=True,
+        validators=[validate_slug],
+        help_text="Unique URL-safe identifier (e.g. masonry-casting-labour)"
+    )
+    icon = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        help_text="Icon identifier (optional)"
+    )
+    short_description_bn = models.TextField(
+        blank=True,
+        default='',
+        help_text="সাব-ক্যাটাগরির সংক্ষিপ্ত বিবরণ (বাংলা)"
+    )
+    short_description_en = models.TextField(
+        blank=True,
+        default='',
+        help_text="Short subcategory description (English)"
+    )
+    sort_order = models.PositiveIntegerField(
+        default=0,
+        db_index=True,
+        help_text="ক্যাটাগরির মধ্যে প্রদর্শনের ক্রম"
+    )
+    is_popular = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="জনপ্রিয় সাব-ক্যাটাগরি কিনা"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="সক্রিয় অবস্থা"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'সাব-ক্যাটাগরি (SubCategory)'
+        verbose_name_plural = 'সাব-ক্যাটাগরিসমূহ (SubCategories)'
+        ordering = ['sort_order', 'name_bn']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['category', 'name_bn'],
+                name='unique_subcategory_per_category_bn'
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['category', 'is_active', 'sort_order']),
+            models.Index(fields=['is_popular', 'is_active']),
+            models.Index(fields=['slug', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.category.name_bn} → {self.name_bn} ({self.name_en})"
+
+    def clean(self):
+        if not self.slug:
+            self.slug = slugify(self.name_en)
+        if not self.category_id:
+            raise ValidationError({'category': 'সাব-ক্যাটাগরির জন্য একটি প্রধান ক্যাটাগরি আবশ্যক।'})
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
 
 
 class Service(models.Model):
@@ -149,6 +261,15 @@ class Service(models.Model):
         related_name='services',
         db_index=True,
         help_text="প্রধান ক্যাটাগরি (Primary Category)"
+    )
+    subcategory = models.ForeignKey(
+        SubCategory,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='services',
+        db_index=True,
+        help_text="সাব-ক্যাটাগরি (SubCategory classification)"
     )
     secondary_categories = models.ManyToManyField(
         Category,
@@ -277,6 +398,7 @@ class Service(models.Model):
         ordering = ['sort_order', 'name_bn']
         indexes = [
             models.Index(fields=['category', 'is_active', 'sort_order']),
+            models.Index(fields=['subcategory', 'is_active']),
             models.Index(fields=['is_featured', 'is_active']),
             models.Index(fields=['service_type', 'is_active']),
         ]
@@ -309,3 +431,84 @@ class Service(models.Model):
             'supports_rental': self.supports_rental,
             'supports_payment': self.supports_payment,
         }
+
+
+class TaxonomyAlias(models.Model):
+    """
+    Taxonomy Search & Synonym Alias Model.
+    Provides fast, normalized phonetic & vernacular synonym mapping for search indexing.
+    Examples:
+    - 'রাজমিস্ত্রি' -> SubCategory(102: Masonry & Casting Labour)
+    - 'মেস্ত্রি' -> SubCategory(102: Masonry & Casting Labour)
+    - 'গাড়ি ভাড়া' -> Category(6: Vehicle Rental & Transport)
+    """
+    alias_text = models.CharField(
+        max_length=150,
+        db_index=True,
+        help_text="এলিয়াস বা বিকল্প নাম (e.g. রাজমিস্ত্রি, মেস্ত্রি, mason)"
+    )
+    normalized_text = models.CharField(
+        max_length=150,
+        db_index=True,
+        help_text="স্বাভাবিককৃত সার্চ টেক্সট (Unicode NFC + lowercase)"
+    )
+    target_type = models.CharField(
+        max_length=30,
+        choices=AliasTargetType.choices,
+        default=AliasTargetType.SUBCATEGORY,
+        db_index=True,
+        help_text="টার্গেট এনটিটি টাইপ (CATEGORY, SUBCATEGORY, SERVICE, SKILL)"
+    )
+    target_id = models.PositiveIntegerField(
+        db_index=True,
+        help_text="টার্গেট অবজেক্টের আইডি"
+    )
+    language = models.CharField(
+        max_length=10,
+        choices=AliasLanguage.choices,
+        default=AliasLanguage.BN,
+        help_text="ভাষা (BN, EN, ALL)"
+    )
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='aliases',
+        help_text="সংশ্লিষ্ট প্রধান ক্যাটাগরি (ঐচ্ছিক)"
+    )
+    subcategory = models.ForeignKey(
+        SubCategory,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='aliases',
+        help_text="সংশ্লিষ্ট সাব-ক্যাটাগরি (ঐচ্ছিক)"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="সক্রিয় অবস্থা"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'ট্যাক্সোনমি এলিয়াস (Taxonomy Alias)'
+        verbose_name_plural = 'ট্যাক্সোনমি এলিয়াসসমূহ (Taxonomy Aliases)'
+        indexes = [
+            models.Index(fields=['normalized_text', 'is_active']),
+            models.Index(fields=['target_type', 'target_id']),
+            models.Index(fields=['category', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.alias_text} → {self.target_type}:{self.target_id} ({self.get_language_display()})"
+
+    def clean(self):
+        if self.alias_text:
+            self.normalized_text = normalize_alias_text(self.alias_text)
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)

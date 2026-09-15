@@ -6,6 +6,12 @@ library;
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/network/api_client.dart';
+import '../../categories/models/category_model.dart';
+import '../../categories/repositories/category_repository.dart';
+import '../../categories/services/category_api_service.dart';
+import '../../categories/widgets/category_selector_card.dart';
+import '../../categories/widgets/category_cascading_picker.dart';
 import '../models/provider_enums.dart';
 import '../repositories/provider_repository.dart';
 
@@ -18,8 +24,21 @@ class ProviderRegistrationFlowScreen extends StatefulWidget {
 
 class _ProviderRegistrationFlowScreenState extends State<ProviderRegistrationFlowScreen> {
   final _repository = ProviderRepository();
+  final _categoryRepo = CategoryRepository(CategoryApiService(ApiClient()));
   int _currentStep = 0;
   bool _isLoading = false;
+
+  // Dynamic Category & Sub-category State (Phase 4C.7)
+  List<CategoryItem> _categories = [];
+  List<SubCategoryItem> _subcategories = [];
+  int? _selectedCategoryId;
+  String? _selectedCategoryNameBn;
+  int? _selectedSubcategoryId;
+  String? _selectedSubcategoryNameBn;
+  bool _isLoadingCategories = false;
+  bool _isLoadingSubcategories = false;
+  String? _categoriesError;
+  String? _subcategoriesError;
 
   // Step 1: Provider Type
   ProviderType _selectedType = ProviderType.individual;
@@ -31,19 +50,11 @@ class _ProviderRegistrationFlowScreenState extends State<ProviderRegistrationFlo
   final _phoneController = TextEditingController();
   ContactVisibility _contactVisibility = ContactVisibility.registeredOnly;
 
-  // Step 3: Service Selection (Demo list)
+  // Step 3: Service Selection (Cascading taxonomy)
   final Set<int> _selectedServices = {};
 
   // Step 4: Service Areas (Upazilas)
   final Set<int> _selectedUpazilas = {1}; // default Cox's Bazar Sadar
-
-  final List<Map<String, dynamic>> _availableServices = [
-    {'id': 1, 'name_bn': 'ইলেকট্রিশিয়ান সার্ভিস', 'category': 'হোম সার্ভিস'},
-    {'id': 2, 'name_bn': 'প্লাম্বিং ও পাইপ ফিটিং', 'category': 'হোম সার্ভিস'},
-    {'id': 3, 'name_bn': 'এসি মেরামত ও সার্ভিসিং', 'category': 'অ্যাপ্লায়েন্স'},
-    {'id': 4, 'name_bn': 'মোটরসাইকেল মেকানিক', 'category': 'অটোমোবাইল'},
-    {'id': 5, 'name_bn': 'রংমিস্ত্রি', 'category': 'নির্মাণ ও সংস্কার'},
-  ];
 
   final List<Map<String, dynamic>> _availableUpazilas = [
     {'id': 1, 'name_bn': 'কক্সবাজার সদর'},
@@ -55,6 +66,58 @@ class _ProviderRegistrationFlowScreenState extends State<ProviderRegistrationFlo
     {'id': 7, 'name_bn': 'মহেশখালী'},
     {'id': 8, 'name_bn': 'কুতুবদিয়া'},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCategories();
+  }
+
+  Future<void> _fetchCategories() async {
+    setState(() {
+      _isLoadingCategories = true;
+      _categoriesError = null;
+    });
+    try {
+      final cats = await _categoryRepo.getMainCategories();
+      if (mounted) {
+        setState(() {
+          _categories = cats;
+          _isLoadingCategories = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingCategories = false;
+          _categoriesError = 'ক্যাটাগরি লোড করা যায়নি।';
+        });
+      }
+    }
+  }
+
+  Future<void> _fetchSubcategories(int categoryId) async {
+    setState(() {
+      _isLoadingSubcategories = true;
+      _subcategoriesError = null;
+    });
+    try {
+      final subs = await _categoryRepo.getSubcategories(categoryId);
+      if (mounted) {
+        setState(() {
+          _subcategories = subs;
+          _isLoadingSubcategories = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingSubcategories = false;
+          _subcategoriesError = 'সাব-ক্যাটাগরি লোড করা যায়নি।';
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -221,6 +284,28 @@ class _ProviderRegistrationFlowScreenState extends State<ProviderRegistrationFlo
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
+                            if (_currentStep == 1) {
+                              if (_nameBnController.text.trim().isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('অনুগ্রহ করে বাংলায় আপনার নাম লিখুন।')),
+                                );
+                                return;
+                              }
+                            } else if (_currentStep == 2) {
+                              if (_selectedCategoryId == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('অনুগ্রহ করে প্রধান ক্যাটাগরি নির্বাচন করুন।')),
+                                );
+                                return;
+                              }
+                              if (_selectedSubcategoryId == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('অনুগ্রহ করে সাব-ক্যাটাগরি নির্বাচন করুন।')),
+                                );
+                                return;
+                              }
+                            }
+
                             if (_currentStep < 3) {
                               setState(() => _currentStep++);
                             } else {
@@ -459,52 +544,354 @@ class _ProviderRegistrationFlowScreenState extends State<ProviderRegistrationFlo
         ),
         const SizedBox(height: 6),
         Text(
-          'আপনি যে সেবাগুলো দিতে সক্ষম সেগুলো টিক দিন। পরবর্তীতে আরও সেবা যুক্ত করা যাবে।',
+          'সেন্ট্রালাইজড মাস্টার ট্যাক্সোনমি থেকে সহজে সার্চ করে অথবা ড্রপডাউন থেকে আপনার প্রধান ক্যাটাগরি ও সাব-ক্যাটাগরি নির্বাচন করুন।',
           style: AppTypography.bodyRegular.copyWith(
             color: AppColors.textSecondary,
           ),
         ),
         const SizedBox(height: 16),
 
-        ..._availableServices.map((service) {
-          final isSelected = _selectedServices.contains(service['id']);
-          return Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.Border.all(
-                color: isSelected ? AppColors.primary : AppColors.border,
-              ),
-            ),
-            child: CheckboxListTile(
-              title: Text(
-                service['name_bn'],
-                style: AppTypography.mediumHeading2.copyWith(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              subtitle: Text(
-                service['category'],
+        // Quick Searchable Modal Selector Card
+        CategorySelectorCard(
+          repository: _categoryRepo,
+          selectedCategoryId: _selectedCategoryId,
+          selectedCategoryNameBn: _selectedCategoryNameBn,
+          selectedSubcategoryId: _selectedSubcategoryId,
+          selectedSubcategoryNameBn: _selectedSubcategoryNameBn,
+          label: 'সার্চ ও নির্বাচন করুন *',
+          hint: '🔍 ট্রেড বা কাজের ক্ষেত্র খুঁজুন...',
+          onSelected: (result) {
+            setState(() {
+              _selectedCategoryId = result.category.id;
+              _selectedCategoryNameBn = result.category.nameBn;
+              _selectedSubcategoryId = result.subcategory.id;
+              _selectedSubcategoryNameBn = result.subcategory.nameBn;
+              _selectedServices = [result.subcategory.id];
+            });
+            _fetchSubcategories(result.category.id);
+          },
+          onReset: () {
+            setState(() {
+              _selectedCategoryId = null;
+              _selectedCategoryNameBn = null;
+              _selectedSubcategoryId = null;
+              _selectedSubcategoryNameBn = null;
+              _selectedServices.clear();
+              _subcategories = [];
+            });
+          },
+        ),
+
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Text(
+                'অথবা সরাসরি ড্রপডাউন বাছাই করুন',
                 style: AppTypography.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
+                  fontSize: 11,
+                  color: const Color(0xFF94A3B8),
                 ),
               ),
-              value: isSelected,
-              activeColor: AppColors.primary,
-              onChanged: (val) {
-                setState(() {
-                  if (val == true) {
-                    _selectedServices.add(service['id'] as int);
-                  } else {
-                    _selectedServices.remove(service['id'] as int);
-                  }
-                });
-              },
             ),
-          );
-        }),
+            const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        if (_categoriesError != null)
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.Border.all(color: const Color(0xFFFCA5A5)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _categoriesError!,
+                    style: AppTypography.bodySmall.copyWith(color: const Color(0xFFB91C1C)),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _fetchCategories,
+                  child: Text(
+                    'পুনরায় চেষ্টা',
+                    style: AppTypography.mediumHeading3.copyWith(
+                      color: const Color(0xFFDC2626),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // ১. প্রধান ক্যাটাগরি Dropdown
+        Row(
+          children: [
+            Text(
+              'প্রধান ক্যাটাগরি *',
+              style: AppTypography.mediumHeading2.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            if (_isLoadingCategories) ...[
+              const SizedBox(width: 8),
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<int>(
+          value: _selectedCategoryId,
+          hint: Text(
+            _isLoadingCategories ? 'ক্যাটাগরি লোড হচ্ছে...' : '-- প্রধান ক্যাটাগরি নির্বাচন করুন --',
+            style: AppTypography.bodyRegular.copyWith(color: AppColors.textSecondary),
+          ),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+            ),
+          ),
+          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textSecondary),
+          items: _categories.map((cat) {
+            return DropdownMenuItem<int>(
+              value: cat.id,
+              child: Text(
+                cat.nameBn,
+                style: AppTypography.mediumHeading2.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (val) {
+            if (val == null) return;
+            setState(() {
+              _selectedCategoryId = val;
+              try {
+                final found = _categories.firstWhere((cat) => cat.id == val);
+                _selectedCategoryNameBn = found.nameBn;
+              } catch (_) {
+                _selectedCategoryNameBn = null;
+              }
+              // Reset subcategory selection
+              _selectedSubcategoryId = null;
+              _selectedSubcategoryNameBn = null;
+              _selectedServices.clear();
+              _subcategories = [];
+            });
+            _fetchSubcategories(val);
+          },
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'আপনার ব্যবসার মূল কাজের ক্ষেত্র বা প্রধান ট্রেড সিলেক্ট করুন।',
+          style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 11),
+        ),
+        const SizedBox(height: 18),
+
+        // ২. সাব-ক্যাটাগরি Dropdown (Cascading)
+        Row(
+          children: [
+            Text(
+              'সাব-ক্যাটাগরি *',
+              style: AppTypography.mediumHeading2.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            if (_isLoadingSubcategories) ...[
+              const SizedBox(width: 8),
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+
+        if (_subcategoriesError != null && _selectedCategoryId != null)
+          Container(
+            padding: const EdgeInsets.all(10),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _subcategoriesError!,
+                    style: AppTypography.bodySmall.copyWith(color: const Color(0xFFDC2626), fontSize: 11),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _fetchSubcategories(_selectedCategoryId!),
+                  child: Text(
+                    'পুনরায় চেষ্টা',
+                    style: AppTypography.mediumHeading3.copyWith(
+                      color: const Color(0xFFDC2626),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        DropdownButtonFormField<int>(
+          value: _selectedSubcategoryId,
+          hint: Text(
+            _selectedCategoryId == null
+                ? '-- প্রথমে প্রধান ক্যাটাগরি নির্বাচন করুন --'
+                : (_isLoadingSubcategories
+                    ? 'সাব-ক্যাটাগরি লোড হচ্ছে...'
+                    : (_subcategories.isEmpty
+                        ? '-- কোনো সাব-ক্যাটাগরি পাওয়া যায়নি --'
+                        : '-- সাব-ক্যাটাগরি নির্বাচন করুন --')),
+            style: AppTypography.bodyRegular.copyWith(color: AppColors.textSecondary),
+          ),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: (_selectedCategoryId == null || _isLoadingSubcategories) ? const Color(0xFFF1F5F9) : Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: _selectedCategoryId == null ? const Color(0xFFE2E8F0) : AppColors.border,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+          ),
+          icon: Icon(
+            Icons.keyboard_arrow_down,
+            color: _selectedCategoryId == null ? const Color(0xFFCBD5E1) : AppColors.textSecondary,
+          ),
+          items: (_selectedCategoryId == null || _subcategories.isEmpty)
+              ? null
+              : _subcategories.map((s) {
+                  return DropdownMenuItem<int>(
+                    value: s.id,
+                    child: Text(
+                      s.nameBn,
+                      style: AppTypography.mediumHeading2.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  );
+                }).toList(),
+          onChanged: (_selectedCategoryId == null || _subcategories.isEmpty)
+              ? null
+              : (val) {
+                  if (val == null) return;
+                  setState(() {
+                    _selectedSubcategoryId = val;
+                    try {
+                      final found = _subcategories.firstWhere((s) => s.id == val);
+                      _selectedSubcategoryNameBn = found.nameBn;
+                    } catch (_) {
+                      _selectedSubcategoryNameBn = null;
+                    }
+                    _selectedServices.clear();
+                    _selectedServices.add(val);
+                  });
+                },
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _selectedCategoryId == null
+              ? 'সাব-ক্যাটাগরি দেখতে আগে উপরে প্রধান ক্যাটাগরি নির্বাচন করুন।'
+              : 'নির্বাচিত প্রধান ক্যাটাগরির অন্তর্ভুক্ত সুনির্দিষ্ট সেবা।',
+          style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 11),
+        ),
+
+        // ৩. নির্বাচিত সারাংশ কার্ড (Summary Card)
+        if (_selectedCategoryId != null && _selectedSubcategoryId != null) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0FDFA),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.Border.all(color: const Color(0xFF99F6E4)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Color(0xFF0D9488), size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'নির্বাচিত সেবা:',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: const Color(0xFF115E59),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${_selectedCategoryNameBn ?? ''} ➔ ${_selectedSubcategoryNameBn ?? ''}',
+                        style: AppTypography.mediumHeading2.copyWith(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF134E4A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

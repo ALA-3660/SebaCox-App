@@ -6,17 +6,25 @@ library;
 
 import 'package:flutter/material.dart';
 import '../models/demand_enums.dart';
+import '../../categories/models/category_model.dart';
+import '../../categories/repositories/category_repository.dart';
+import '../../categories/services/category_api_service.dart';
+import '../../categories/widgets/category_selector_card.dart';
+import '../../categories/widgets/category_cascading_picker.dart';
+import '../../../core/network/api_client.dart';
 
 class CreateDemandScreen extends StatefulWidget {
   final Function(Map<String, dynamic> data, bool publishNow) onSubmit;
   final VoidCallback? onCancel;
   final Map<String, dynamic>? initialDraft;
+  final CategoryRepository? categoryRepository;
 
   const CreateDemandScreen({
     super.key,
     required this.onSubmit,
     this.onCancel,
     this.initialDraft,
+    this.categoryRepository,
   });
 
   @override
@@ -26,6 +34,15 @@ class CreateDemandScreen extends StatefulWidget {
 class _CreateDemandScreenState extends State<CreateDemandScreen> {
   int _currentStep = 1;
   final int _totalSteps = 9;
+
+  // Category Repository & Dynamic Taxonomy State
+  late final CategoryRepository _categoryRepo;
+  List<CategoryItem> _categories = [];
+  List<SubCategoryItem> _subcategories = [];
+  bool _isLoadingCategories = false;
+  bool _isLoadingSubcategories = false;
+  String? _categoriesError;
+  String? _subcategoriesError;
 
   // Form Controllers
   final _titleController = TextEditingController();
@@ -77,128 +94,6 @@ class _CreateDemandScreenState extends State<CreateDemandScreen> {
   // State flags & validation errors
   String? _stepError;
   bool _isSubmitting = false;
-
-  // Static Taxonomy Data for Cox's Bazar Master Taxonomy
-  final List<Map<String, dynamic>> _categories = [
-    {
-      'id': 1,
-      'name_bn': 'নির্মাণ ও প্রকৌশল',
-      'name_en': 'Construction & Engineering',
-      'icon': Icons.construction,
-      'services': [
-        {'id': 101, 'name_bn': 'ইট ও বালু সরবরাহ', 'name_en': 'Brick & Sand Supply'},
-        {'id': 102, 'name_bn': 'রাজমিস্ত্রি', 'name_en': 'Masonry'},
-        {'id': 103, 'name_bn': 'রড বাইন্ডিং ও ঢালাই', 'name_en': 'Rod Binding & Casting'},
-        {'id': 104, 'name_bn': 'রং ও পুটি মিস্ত্রি', 'name_en': 'Painting & Putty'},
-        {'id': 105, 'name_bn': 'টাইলস ও মার্বেল মিস্ত্রি', 'name_en': 'Tiles & Marble'},
-      ]
-    },
-    {
-      'id': 2,
-      'name_bn': 'বাসাবাড়ি ও অফিস রক্ষণাবেক্ষণ',
-      'name_en': 'Home & Office Maintenance',
-      'icon': Icons.home_repair_service,
-      'services': [
-        {'id': 201, 'name_bn': 'ইলেকট্রিশিয়ান ও ওয়্যারিং', 'name_en': 'Electrician & Wiring'},
-        {'id': 202, 'name_bn': 'প্লাম্বিং ও পাইপ ফিটিং', 'name_en': 'Plumbing & Pipe Fitting'},
-        {'id': 203, 'name_bn': 'এসি ও ফ্রিজ সার্ভিসিং', 'name_en': 'AC & Fridge Servicing'},
-        {'id': 204, 'name_bn': 'কাঠমিস্ত্রি ও ফার্নিচার মেরামত', 'name_en': 'Carpentry & Furniture'},
-        {'id': 205, 'name_bn': 'বাসা-বাড়ি ও অফিস ক্লিনিং', 'name_en': 'Cleaning Services'},
-      ]
-    },
-    {
-      'id': 3,
-      'name_bn': 'পরিবহন ও লজিস্টিকস',
-      'name_en': 'Transport & Logistics',
-      'icon': Icons.local_shipping,
-      'services': [
-        {'id': 301, 'name_bn': 'ট্রাক ও পিকআপ ভাড়া', 'name_en': 'Truck & Pickup Rental'},
-        {'id': 302, 'name_bn': 'বাসা বদল ও মালামাল পরিবহন', 'name_en': 'Home Relocation'},
-        {'id': 303, 'name_bn': 'অ্যাম্বুলেন্স সার্ভিস', 'name_en': 'Ambulance Service'},
-        {'id': 304, 'name_bn': 'কুরিয়ার ও পার্সেল ডেলিভারি', 'name_en': 'Courier & Parcel Delivery'},
-      ]
-    },
-    {
-      'id': 4,
-      'name_bn': 'পর্যটন ও আতিথেয়তা',
-      'name_en': 'Tourism & Hospitality',
-      'icon': Icons.hotel,
-      'services': [
-        {'id': 401, 'name_bn': 'হোটেল ও রিসোর্ট বুকিং', 'name_en': 'Hotel & Resort Booking'},
-        {'id': 402, 'name_bn': 'ট্যুর গাইড ও ট্রাভেল প্ল্যানার', 'name_en': 'Tour Guide & Travel Planner'},
-        {'id': 403, 'name_bn': 'কার ও জিপ রেন্টাল', 'name_en': 'Car & Jeep Rental'},
-        {'id': 404, 'name_bn': 'বোট ও বিচ অ্যাক্টিভিটি', 'name_en': 'Boat & Beach Activities'},
-      ]
-    },
-    {
-      'id': 5,
-      'name_bn': 'কৃষি ও মৎস্য সম্পদ',
-      'name_en': 'Agriculture & Fisheries',
-      'icon': Icons.agriculture,
-      'services': [
-        {'id': 501, 'name_bn': 'শুটকি ও সামুদ্রিক মাছ পাইকারি', 'name_en': 'Dry Fish Wholesale'},
-        {'id': 502, 'name_bn': 'লবণ উৎপাদন সামগ্রী', 'name_en': 'Salt Production Supplies'},
-        {'id': 503, 'name_bn': 'পান ও সুপারি সরবরাহ', 'name_en': 'Betel Leaf Supply'},
-        {'id': 504, 'name_bn': 'কৃষি যন্ত্রপাতি ও সামগ্রী', 'name_en': 'Agri Machinery & Supplies'},
-      ]
-    },
-    {
-      'id': 6,
-      'name_bn': 'স্বাস্থ্য ও চিকিৎসা',
-      'name_en': 'Healthcare & Medical',
-      'icon': Icons.medical_services,
-      'services': [
-        {'id': 601, 'name_bn': 'ডাক্তার', 'name_en': 'Doctor Consultation'},
-        {'id': 602, 'name_bn': 'হোম নার্সিং ও কেয়ারগিভার', 'name_en': 'Home Nursing & Caregiver'},
-        {'id': 603, 'name_bn': 'ফিজিওথেরাপি সেবা', 'name_en': 'Physiotherapy'},
-        {'id': 604, 'name_bn': 'ডায়াগনস্টিক ও ল্যাব টেস্ট', 'name_en': 'Diagnostic & Lab Test'},
-      ]
-    },
-    {
-      'id': 7,
-      'name_bn': 'খাবার ও রেস্তোরাঁ',
-      'name_en': 'Food & Catering',
-      'icon': Icons.restaurant,
-      'services': [
-        {'id': 701, 'name_bn': 'ক্যাটারিং ও বাবুর্চি', 'name_en': 'Catering & Chef'},
-        {'id': 702, 'name_bn': 'হোমমেড ফুড ডেলিভারি', 'name_en': 'Homemade Food Delivery'},
-        {'id': 703, 'name_bn': 'ইভেন্ট ফুড সাপ্লাই', 'name_en': 'Event Food Supply'},
-      ]
-    },
-    {
-      'id': 8,
-      'name_bn': 'শিক্ষা ও প্রশিক্ষণ',
-      'name_en': 'Education & Training',
-      'icon': Icons.school,
-      'services': [
-        {'id': 801, 'name_bn': 'হোম টিউটর', 'name_en': 'Home Tutor'},
-        {'id': 802, 'name_bn': 'ভাষা ও স্কিল কোর্স', 'name_en': 'Language & Skill Training'},
-        {'id': 803, 'name_bn': 'কম্পিউটার ও আইটি প্রশিক্ষণ', 'name_en': 'Computer & IT Training'},
-      ]
-    },
-    {
-      'id': 9,
-      'name_bn': 'যানবাহন সেবা',
-      'name_en': 'Vehicle Services',
-      'icon': Icons.directions_car,
-      'services': [
-        {'id': 901, 'name_bn': 'অটোমোবাইল ও বাইক মেরামত', 'name_en': 'Automobile & Bike Repair'},
-        {'id': 902, 'name_bn': 'গাড়ি ওয়াশ ও পলিশিং', 'name_en': 'Car Wash & Detailing'},
-        {'id': 903, 'name_bn': 'টায়ার ও ব্যাটারি সার্ভিস', 'name_en': 'Tire & Battery Service'},
-      ]
-    },
-    {
-      'id': 10,
-      'name_bn': 'অনুষ্ঠান ও বিয়ের সেবা',
-      'name_en': 'Events & Wedding Services',
-      'icon': Icons.celebration,
-      'services': [
-        {'id': 1001, 'name_bn': 'ডেকোরেশন ও সাউন্ড সিস্টেম', 'name_en': 'Decoration & Sound'},
-        {'id': 1002, 'name_bn': 'ফটোগ্রাফি ও ভিডিওগ্রাফি', 'name_en': 'Photography & Videography'},
-        {'id': 1003, 'name_bn': 'কমিউনিটি সেন্টার বুকিং', 'name_en': 'Community Center Booking'},
-      ]
-    },
-  ];
 
   // Upazila & Hierarchy Static Data for Cox's Bazar
   final List<Map<String, dynamic>> _upazilas = [
@@ -264,8 +159,59 @@ class _CreateDemandScreenState extends State<CreateDemandScreen> {
   @override
   void initState() {
     super.initState();
+    _categoryRepo = widget.categoryRepository ?? CategoryRepository(CategoryApiService(ApiClient()));
     if (widget.initialDraft != null) {
       _loadDraft(widget.initialDraft!);
+    }
+    _fetchCategories();
+  }
+
+  Future<void> _fetchCategories() async {
+    setState(() {
+      _isLoadingCategories = true;
+      _categoriesError = null;
+    });
+    try {
+      final cats = await _categoryRepo.getMainCategories();
+      if (mounted) {
+        setState(() {
+          _categories = cats;
+          _isLoadingCategories = false;
+        });
+        if (_selectedCategoryId != null) {
+          _fetchSubcategories(_selectedCategoryId!);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingCategories = false;
+          _categoriesError = 'ক্যাটাগরি লোড করা যায়নি। আবার চেষ্টা করুন।';
+        });
+      }
+    }
+  }
+
+  Future<void> _fetchSubcategories(int categoryId) async {
+    setState(() {
+      _isLoadingSubcategories = true;
+      _subcategoriesError = null;
+    });
+    try {
+      final subs = await _categoryRepo.getSubcategories(categoryId);
+      if (mounted) {
+        setState(() {
+          _subcategories = subs;
+          _isLoadingSubcategories = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingSubcategories = false;
+          _subcategoriesError = 'সাব-ক্যাটাগরি লোড করা যায়নি।';
+        });
+      }
     }
   }
 
@@ -590,18 +536,6 @@ class _CreateDemandScreenState extends State<CreateDemandScreen> {
   }
 
   Widget _buildStep2() {
-    // Find services for selected category
-    List<Map<String, dynamic>> availableServices = [];
-    if (_selectedCategoryId != null) {
-      final selectedCat = _categories.firstWhere(
-        (cat) => cat['id'] == _selectedCategoryId,
-        orElse: () => {},
-      );
-      if (selectedCat.containsKey('services')) {
-        availableServices = List<Map<String, dynamic>>.from(selectedCat['services'] as List);
-      }
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -616,31 +550,119 @@ class _CreateDemandScreenState extends State<CreateDemandScreen> {
         ),
         const SizedBox(height: 6),
         const Text(
-          'মাস্টার ট্যাক্সোনমি থেকে প্রধান ক্যাটাগরি ও সাব-ক্যাটাগরি নির্বাচন করুন।',
+          'মাস্টার ট্যাক্সোনমি থেকে সহজে সার্চ করে অথবা ড্রপডাউন থেকে প্রধান ক্যাটাগরি ও সাব-ক্যাটাগরি নির্বাচন করুন।',
           style: TextStyle(
             fontFamily: 'TiroBangla',
             fontSize: 13,
             color: Color(0xFF64748B),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
+
+        // Quick Searchable Modal Selector Card
+        CategorySelectorCard(
+          repository: _categoryRepo,
+          selectedCategoryId: _selectedCategoryId,
+          selectedCategoryNameBn: _selectedCategoryNameBn,
+          selectedSubcategoryId: _selectedServiceId,
+          selectedSubcategoryNameBn: _selectedServiceNameBn,
+          label: 'সার্চ ও নির্বাচন করুন *',
+          hint: '🔍 সেবা বা ক্যাটাগরি খুঁজুন...',
+          onSelected: (result) {
+            setState(() {
+              _selectedCategoryId = result.category.id;
+              _selectedCategoryNameBn = result.category.nameBn;
+              _selectedServiceId = result.subcategory.id;
+              _selectedServiceNameBn = result.subcategory.nameBn;
+            });
+            _fetchSubcategories(result.category.id);
+          },
+          onReset: () {
+            setState(() {
+              _selectedCategoryId = null;
+              _selectedCategoryNameBn = null;
+              _selectedServiceId = null;
+              _selectedServiceNameBn = null;
+              _subcategories = [];
+            });
+          },
+        ),
+
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Text(
+                'অথবা সরাসরি ড্রপডাউন বাছাই করুন',
+                style: const TextStyle(
+                  fontFamily: 'TiroBangla',
+                  fontSize: 11,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+            ),
+            const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        if (_categoriesError != null)
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFFCA5A5)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _categoriesError!,
+                    style: const TextStyle(fontFamily: 'TiroBangla', fontSize: 12, color: Color(0xFFB91C1C)),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _fetchCategories,
+                  child: const Text('পুনরায় চেষ্টা', style: TextStyle(fontFamily: 'BalooDa2', fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFFDC2626))),
+                ),
+              ],
+            ),
+          ),
 
         // ১ম Dropdown — প্রধান ক্যাটাগরি
-        const Text(
-          'প্রধান ক্যাটাগরি *',
-          style: TextStyle(
-            fontFamily: 'TiroBangla',
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-            color: Color(0xFF334155),
-          ),
+        Row(
+          children: [
+            const Text(
+              'প্রধান ক্যাটাগরি *',
+              style: TextStyle(
+                fontFamily: 'TiroBangla',
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: Color(0xFF334155),
+              ),
+            ),
+            if (_isLoadingCategories) ...[
+              const SizedBox(width: 8),
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0D9488)),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<int>(
           value: _selectedCategoryId,
-          hint: const Text(
-            '-- প্রধান ক্যাটাগরি নির্বাচন করুন --',
-            style: TextStyle(fontFamily: 'TiroBangla', fontSize: 13, color: Color(0xFF94A3B8)),
+          hint: Text(
+            _isLoadingCategories ? 'ক্যাটাগরি লোড হচ্ছে...' : '-- প্রধান ক্যাটাগরি নির্বাচন করুন --',
+            style: const TextStyle(fontFamily: 'TiroBangla', fontSize: 13, color: Color(0xFF94A3B8)),
           ),
           decoration: InputDecoration(
             filled: true,
@@ -662,9 +684,9 @@ class _CreateDemandScreenState extends State<CreateDemandScreen> {
           icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
           items: _categories.map((cat) {
             return DropdownMenuItem<int>(
-              value: cat['id'] as int,
+              value: cat.id,
               child: Text(
-                cat['name_bn'] as String,
+                cat.nameBn,
                 style: const TextStyle(
                   fontFamily: 'BalooDa2',
                   fontWeight: FontWeight.w600,
@@ -675,17 +697,21 @@ class _CreateDemandScreenState extends State<CreateDemandScreen> {
             );
           }).toList(),
           onChanged: (val) {
+            if (val == null) return;
             setState(() {
               _selectedCategoryId = val;
-              final found = _categories.firstWhere(
-                (cat) => cat['id'] == val,
-                orElse: () => {},
-              );
-              _selectedCategoryNameBn = found['name_bn'] as String?;
+              try {
+                final found = _categories.firstWhere((cat) => cat.id == val);
+                _selectedCategoryNameBn = found.nameBn;
+              } catch (_) {
+                _selectedCategoryNameBn = null;
+              }
               // Reset sub-category on main category change
               _selectedServiceId = null;
               _selectedServiceNameBn = null;
+              _subcategories = [];
             });
+            _fetchSubcategories(val);
           },
         ),
         const SizedBox(height: 6),
@@ -696,27 +722,68 @@ class _CreateDemandScreenState extends State<CreateDemandScreen> {
         const SizedBox(height: 18),
 
         // ২য় Dropdown — সাব-ক্যাটাগরি
-        const Text(
-          'সাব-ক্যাটাগরি *',
-          style: TextStyle(
-            fontFamily: 'TiroBangla',
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-            color: Color(0xFF334155),
-          ),
+        Row(
+          children: [
+            const Text(
+              'সাব-ক্যাটাগরি *',
+              style: TextStyle(
+                fontFamily: 'TiroBangla',
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: Color(0xFF334155),
+              ),
+            ),
+            if (_isLoadingSubcategories) ...[
+              const SizedBox(width: 8),
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0D9488)),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 8),
+
+        if (_subcategoriesError != null && _selectedCategoryId != null)
+          Container(
+            padding: const EdgeInsets.all(10),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _subcategoriesError!,
+                    style: const TextStyle(fontFamily: 'TiroBangla', fontSize: 11, color: Color(0xFFDC2626)),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _fetchSubcategories(_selectedCategoryId!),
+                  child: const Text('পুনরায় চেষ্টা', style: TextStyle(fontFamily: 'BalooDa2', fontSize: 11, color: Color(0xFFDC2626))),
+                ),
+              ],
+            ),
+          ),
+
         DropdownButtonFormField<int>(
           value: _selectedServiceId,
           hint: Text(
             _selectedCategoryId == null
                 ? '-- প্রথমে প্রধান ক্যাটাগরি নির্বাচন করুন --'
-                : '-- সাব-ক্যাটাগরি নির্বাচন করুন --',
+                : (_isLoadingSubcategories
+                    ? 'সাব-ক্যাটাগরি লোড হচ্ছে...'
+                    : (_subcategories.isEmpty
+                        ? '-- কোনো সাব-ক্যাটাগরি পাওয়া যায়নি --'
+                        : '-- সাব-ক্যাটাগরি নির্বাচন করুন --')),
             style: const TextStyle(fontFamily: 'TiroBangla', fontSize: 13, color: Color(0xFF94A3B8)),
           ),
           decoration: InputDecoration(
             filled: true,
-            fillColor: _selectedCategoryId == null ? const Color(0xFFF1F5F9) : Colors.white,
+            fillColor: (_selectedCategoryId == null || _isLoadingSubcategories) ? const Color(0xFFF1F5F9) : Colors.white,
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -741,13 +808,13 @@ class _CreateDemandScreenState extends State<CreateDemandScreen> {
             Icons.keyboard_arrow_down,
             color: _selectedCategoryId == null ? const Color(0xFFCBD5E1) : const Color(0xFF64748B),
           ),
-          items: _selectedCategoryId == null
+          items: (_selectedCategoryId == null || _subcategories.isEmpty)
               ? null
-              : availableServices.map((s) {
+              : _subcategories.map((s) {
                   return DropdownMenuItem<int>(
-                    value: s['id'] as int,
+                    value: s.id,
                     child: Text(
-                      s['name_bn'] as String,
+                      s.nameBn,
                       style: const TextStyle(
                         fontFamily: 'BalooDa2',
                         fontWeight: FontWeight.w600,
@@ -757,16 +824,17 @@ class _CreateDemandScreenState extends State<CreateDemandScreen> {
                     ),
                   );
                 }).toList(),
-          onChanged: _selectedCategoryId == null
+          onChanged: (_selectedCategoryId == null || _subcategories.isEmpty)
               ? null
               : (val) {
                   setState(() {
                     _selectedServiceId = val;
-                    final found = availableServices.firstWhere(
-                      (s) => s['id'] == val,
-                      orElse: () => {},
-                    );
-                    _selectedServiceNameBn = found['name_bn'] as String?;
+                    try {
+                      final found = _subcategories.firstWhere((s) => s.id == val);
+                      _selectedServiceNameBn = found.nameBn;
+                    } catch (_) {
+                      _selectedServiceNameBn = null;
+                    }
                   });
                 },
         ),

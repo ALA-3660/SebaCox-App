@@ -1,6 +1,6 @@
 """
-API Views for Categories & Services.
-Universal Category & Service Foundation.
+API Views for Categories, SubCategories, Services & Taxonomy Aliases.
+Master Taxonomy v1.0 Universal Foundation.
 "প্রয়োজন থেকে সমাধান- এক অ্যাপেই"
 "খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই"
 """
@@ -9,16 +9,19 @@ from django.db.models import Count, Q
 from rest_framework import views, status, permissions
 from common.responses import StandardResponse
 
-from .models import Category, Service
+from .models import Category, SubCategory, Service, TaxonomyAlias
 from .constants import CategoryKind, ServiceType
 from .serializers import (
     CategorySerializer,
     CategorySummarySerializer,
     CategoryTreeSerializer,
+    SubCategorySerializer,
+    SubCategorySummarySerializer,
     ServiceSerializer,
-    ServiceSummarySerializer
+    ServiceSummarySerializer,
+    TaxonomyAliasSerializer,
 )
-from .services import CategoryTreeService, ServiceSearchService
+from .services import CategoryTreeService, ServiceSearchService, TaxonomySearchService
 
 
 class IsAdminOrReadOnly(permissions.BasePermission):
@@ -34,7 +37,7 @@ class IsAdminOrReadOnly(permissions.BasePermission):
 
 class CategoryListView(views.APIView):
     """
-    GET /api/v1/categories/ - List active categories with optional filtering.
+    GET /api/v1/categories/ - List active master categories (31 Master Categories).
     POST /api/v1/categories/ - Create a new category (Admin only).
     """
     permission_classes = [IsAdminOrReadOnly]
@@ -46,7 +49,6 @@ class CategoryListView(views.APIView):
         if kind:
             queryset = queryset.filter(kind=kind)
         else:
-            # Default to public service categories for public browsing
             queryset = queryset.filter(kind=CategoryKind.PUBLIC_SERVICE_CATEGORY)
 
         parent_id = request.query_params.get('parent')
@@ -56,19 +58,26 @@ class CategoryListView(views.APIView):
             else:
                 queryset = queryset.filter(parent_id=parent_id)
 
-        level = request.query_params.get('level')
-        if level is not None:
-            try:
-                queryset = queryset.filter(level=int(level))
-            except ValueError:
-                pass
-
         is_featured = request.query_params.get('is_featured')
         if is_featured is not None:
             queryset = queryset.filter(is_featured=(is_featured.lower() in ('true', '1')))
 
-        queryset = queryset.annotate(
-            active_children_count=Count('children', filter=Q(children__is_active=True)),
+        is_popular = request.query_params.get('is_popular')
+        if is_popular is not None:
+            queryset = queryset.filter(is_popular=(is_popular.lower() in ('true', '1')))
+
+        search = request.query_params.get('search') or request.query_params.get('q')
+        if search:
+            q_clean = search.strip()
+            queryset = queryset.filter(
+                Q(name_bn__icontains=q_clean) |
+                Q(name_en__icontains=q_clean) |
+                Q(slug__icontains=q_clean) |
+                Q(description_bn__icontains=q_clean)
+            )
+
+        queryset = queryset.prefetch_related('subcategories').annotate(
+            active_subcategories_count=Count('subcategories', filter=Q(subcategories__is_active=True)),
             active_services_count=Count('services', filter=Q(services__is_active=True))
         ).order_by('sort_order', 'name_bn')
 
@@ -96,15 +105,15 @@ class CategoryListView(views.APIView):
 
 class CategoryDetailView(views.APIView):
     """
-    GET /api/v1/categories/<id>/ - Retrieve single category.
-    PUT/PATCH/DELETE - Admin modification.
+    GET /api/v1/categories/<id>/ - Retrieve single category with subcategories.
+    PATCH/DELETE - Admin modification.
     """
     permission_classes = [IsAdminOrReadOnly]
 
     def get(self, request, pk):
         cat = get_object_or_404(
-            Category.objects.annotate(
-                active_children_count=Count('children', filter=Q(children__is_active=True)),
+            Category.objects.prefetch_related('subcategories').annotate(
+                active_subcategories_count=Count('subcategories', filter=Q(subcategories__is_active=True)),
                 active_services_count=Count('services', filter=Q(services__is_active=True))
             ),
             pk=pk
@@ -140,20 +149,107 @@ class CategoryDetailView(views.APIView):
         )
 
 
-class CategoryChildrenView(views.APIView):
+class CategorySubcategoriesView(views.APIView):
     """
-    GET /api/v1/categories/<id>/children/ - Retrieve active direct children.
+    GET /api/v1/categories/<id>/subcategories/ - Direct cascading subcategories under a master category.
     """
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, pk):
         category = get_object_or_404(Category, pk=pk)
-        children = category.children.filter(is_active=True).annotate(
-            active_children_count=Count('children', filter=Q(children__is_active=True)),
-            active_services_count=Count('services', filter=Q(services__is_active=True))
-        ).order_by('sort_order', 'name_bn')
+        subcategories = category.subcategories.filter(is_active=True).order_by('sort_order', 'name_bn')
+        serializer = SubCategorySummarySerializer(subcategories, many=True)
+        return StandardResponse.success(
+            data=serializer.data,
+            message=f"{category.name_bn}-এর সাব-ক্যাটাগরি তালিকা পাওয়া গেছে।"
+        )
 
-        serializer = CategorySerializer(children, many=True)
+
+class SubCategoryListView(views.APIView):
+    """
+    GET /api/v1/subcategories/ - List subcategories with optional category filter.
+    POST /api/v1/subcategories/ - Create subcategory (Admin only).
+    """
+    permission_classes = [IsAdminOrReadOnly]
+
+    def get(self, request):
+        queryset = SubCategory.objects.filter(is_active=True).select_related('category')
+
+        category_id = request.query_params.get('category_id') or request.query_params.get('category')
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+
+        is_popular = request.query_params.get('is_popular')
+        if is_popular is not None:
+            queryset = queryset.filter(is_popular=(is_popular.lower() in ('true', '1')))
+
+        search = request.query_params.get('search') or request.query_params.get('q')
+        if search:
+            q_clean = search.strip()
+            queryset = queryset.filter(
+                Q(name_bn__icontains=q_clean) |
+                Q(name_en__icontains=q_clean) |
+                Q(slug__icontains=q_clean) |
+                Q(short_description_bn__icontains=q_clean)
+            )
+
+        queryset = queryset.order_by('category__sort_order', 'sort_order', 'name_bn')
+        serializer = SubCategorySerializer(queryset, many=True)
+        return StandardResponse.success(
+            data=serializer.data,
+            message="সাব-ক্যাটাগরি তালিকা পাওয়া গেছে।"
+        )
+
+    def post(self, request):
+        serializer = SubCategorySerializer(data=request.data)
+        if serializer.is_valid():
+            sub = serializer.save()
+            return StandardResponse.success(
+                data=SubCategorySerializer(sub).data,
+                message="সাব-ক্যাটাগরি সফলভাবে তৈরি করা হয়েছে।",
+                status_code=status.HTTP_201_CREATED
+            )
+        return StandardResponse.error(
+            message="সাব-ক্যাটাগরি তৈরিতে ত্রুটি হয়েছে।",
+            errors=serializer.errors,
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+
+
+class SubCategoryDetailView(views.APIView):
+    """
+    GET /api/v1/subcategories/<id>/ - Single subcategory detail.
+    """
+    permission_classes = [IsAdminOrReadOnly]
+
+    def get(self, request, pk):
+        sub = get_object_or_404(SubCategory.objects.select_related('category'), pk=pk)
+        serializer = SubCategorySerializer(sub)
+        return StandardResponse.success(
+            data=serializer.data,
+            message="সাব-ক্যাটাগরি তথ্য পাওয়া গেছে।"
+        )
+
+
+class CategoryChildrenView(views.APIView):
+    """
+    GET /api/v1/categories/<id>/children/ - Backward compatibility for child categories.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, pk):
+        category = get_object_or_404(Category, pk=pk)
+        # Returns subcategories or children
+        subcategories = category.subcategories.filter(is_active=True).order_by('sort_order', 'name_bn')
+        if subcategories.exists():
+            serializer = SubCategorySummarySerializer(subcategories, many=True)
+            return StandardResponse.success(
+                data=serializer.data,
+                message=f"{category.name_bn}-এর সাব-ক্যাটাগরি তালিকা পাওয়া গেছে।"
+            )
+
+        children = category.children.filter(is_active=True).order_by('sort_order', 'name_bn')
+        serializer = CategorySummarySerializer(children, many=True)
         return StandardResponse.success(
             data=serializer.data,
             message=f"{category.name_bn}-এর সাব-ক্যাটাগরি তালিকা পাওয়া গেছে।"
@@ -162,7 +258,7 @@ class CategoryChildrenView(views.APIView):
 
 class CategoryTreeViewView(views.APIView):
     """
-    GET /api/v1/categories/tree/ - Retrieve structured category tree.
+    GET /api/v1/categories/tree/ - Retrieve structured 31 Master Category tree with subcategories.
     """
     permission_classes = [permissions.AllowAny]
 
@@ -171,13 +267,13 @@ class CategoryTreeViewView(views.APIView):
         tree = CategoryTreeService.get_tree(kind=kind if kind != 'ALL' else None)
         return StandardResponse.success(
             data=tree,
-            message="ক্যাটাগরি হায়ারার্কি ট্রি সফলভাবে তৈরি হয়েছে।"
+            message="মাস্টার ট্যাক্সোনমি হায়ারার্কি ট্রি সফলভাবে পাওয়া গেছে।"
         )
 
 
 class CategoryFeaturedView(views.APIView):
     """
-    GET /api/v1/categories/featured/ - Retrieve featured public categories.
+    GET /api/v1/categories/featured/ - Retrieve featured master categories.
     """
     permission_classes = [permissions.AllowAny]
 
@@ -203,11 +299,15 @@ class ServiceListView(views.APIView):
     permission_classes = [IsAdminOrReadOnly]
 
     def get(self, request):
-        queryset = Service.objects.filter(is_active=True).select_related('category')
+        queryset = Service.objects.filter(is_active=True).select_related('category', 'subcategory')
 
         category_id = request.query_params.get('category')
         if category_id:
             queryset = queryset.filter(category_id=category_id)
+
+        subcategory_id = request.query_params.get('subcategory')
+        if subcategory_id:
+            queryset = queryset.filter(subcategory_id=subcategory_id)
 
         service_type = request.query_params.get('service_type')
         if service_type:
@@ -243,114 +343,43 @@ class ServiceListView(views.APIView):
 class ServiceDetailView(views.APIView):
     """
     GET /api/v1/services/<id>/ - Full service details with capability matrix.
-    PUT/PATCH/DELETE - Admin modification.
     """
     permission_classes = [IsAdminOrReadOnly]
 
     def get(self, request, pk):
-        service = get_object_or_404(Service.objects.select_related('category'), pk=pk)
+        service = get_object_or_404(Service.objects.select_related('category', 'subcategory'), pk=pk)
         serializer = ServiceSerializer(service)
         return StandardResponse.success(
             data=serializer.data,
             message="সেবার বিস্তারিত তথ্য পাওয়া গেছে।"
         )
 
-    def patch(self, request, pk):
-        service = get_object_or_404(Service, pk=pk)
-        serializer = ServiceSerializer(service, data=request.data, partial=True)
-        if serializer.is_valid():
-            updated = serializer.save()
-            return StandardResponse.success(
-                data=ServiceSerializer(updated).data,
-                message="সেবা সফলভাবে আপডেট হয়েছে।"
-            )
-        return StandardResponse.error(
-            message="সেবা আপডেটে ত্রুটি।",
-            errors=serializer.errors,
-            status_code=status.HTTP_400_BAD_REQUEST
-        )
 
-    def delete(self, request, pk):
-        service = get_object_or_404(Service, pk=pk)
-        service.is_active = False
-        service.save(update_fields=['is_active'])
-        return StandardResponse.success(
-            data={'id': pk, 'is_active': False},
-            message="সেবা নিষ্ক্রিয় করা হয়েছে।"
-        )
-
-
-class ServicesByCategoryView(views.APIView):
+class TaxonomySearchView(views.APIView):
     """
-    GET /api/v1/services/by-category/<category_id>/ - List services under category and subcategories.
-    """
-    permission_classes = [permissions.AllowAny]
-
-    def get(self, request, category_id):
-        category = get_object_or_404(Category, pk=category_id)
-        # Include services directly in category, or in child categories
-        child_ids = list(category.children.filter(is_active=True).values_list('id', flat=True))
-        all_cat_ids = [category.id] + child_ids
-
-        services = Service.objects.filter(
-            is_active=True,
-            category_id__in=all_cat_ids
-        ).select_related('category').order_by('sort_order', 'name_bn')
-
-        serializer = ServiceSummarySerializer(services, many=True)
-        return StandardResponse.success(
-            data=serializer.data,
-            message=f"{category.name_bn}-এর অধীন সেবাসমূহ পাওয়া গেছে।"
-        )
-
-
-class ServiceFeaturedView(views.APIView):
-    """
-    GET /api/v1/services/featured/ - List featured services.
-    """
-    permission_classes = [permissions.AllowAny]
-
-    def get(self, request):
-        featured = Service.objects.filter(
-            is_active=True,
-            is_featured=True
-        ).select_related('category').order_by('sort_order', 'name_bn')
-
-        serializer = ServiceSummarySerializer(featured, many=True)
-        return StandardResponse.success(
-            data=serializer.data,
-            message="জনপ্রিয় সেবাসমূহ পাওয়া গেছে।"
-        )
-
-
-class ServiceSearchView(views.APIView):
-    """
-    GET /api/v1/services/search/?q=... - Bilingual search for services.
+    GET /api/v1/taxonomy/search/?q=... - Unified search for categories, subcategories, services and aliases.
     """
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         q = request.query_params.get('q', '').strip()
-        if not q:
-            return StandardResponse.success(
-                data=[],
-                message="অনুসন্ধানের জন্য শব্দ লিখুন।"
-            )
-
-        category_id = request.query_params.get('category_id')
-        service_type = request.query_params.get('service_type')
-        is_featured_param = request.query_params.get('is_featured')
-        is_featured = (is_featured_param.lower() in ('true', '1')) if is_featured_param else None
-
-        results = ServiceSearchService.search(
-            query=q,
-            category_id=int(category_id) if category_id and category_id.isdigit() else None,
-            service_type=service_type,
-            is_featured=is_featured
+        results = TaxonomySearchService.search(query=q)
+        return StandardResponse.success(
+            data=results,
+            message="ট্যাক্সোনমি অনুসন্ধান ফলাফল পাওয়া গেছে।"
         )
 
-        serializer = ServiceSummarySerializer(results, many=True)
+
+class TaxonomyAliasListView(views.APIView):
+    """
+    GET /api/v1/taxonomy/aliases/ - List taxonomy synonyms/aliases.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        aliases = TaxonomyAlias.objects.filter(is_active=True).order_by('alias_text')
+        serializer = TaxonomyAliasSerializer(aliases, many=True)
         return StandardResponse.success(
             data=serializer.data,
-            message=f"{len(results)}টি সেবা পাওয়া গেছে।"
+            message="ট্যাক্সোনমি এলিয়াস তালিকা পাওয়া গেছে।"
         )
