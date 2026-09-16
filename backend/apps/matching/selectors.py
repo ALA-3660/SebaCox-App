@@ -15,26 +15,28 @@ from .constants import MatchStatus
 
 def get_candidate_providers_for_demand(demand: Demand) -> QuerySet:
     """
-    Selects potential Provider candidates for a Demand.
+    Selects potential Provider candidates for a Demand based on Master Taxonomy.
     
     Query optimization:
     1. Filter only Provider.status = ACTIVE and is_active = True
-    2. Filter providers having at least one active & available service matching demand's service or category
+    2. Filter providers having at least one active & available service matching demand's service, subcategory, or category
     3. Prefetch related service offerings and service areas to eliminate N+1 queries.
     """
     base_filter = Q(status=ProviderStatus.ACTIVE, is_active=True)
 
-    service_filter = Q(services__is_active=True, services__is_available=True)
-    
+    taxonomy_or = Q()
     if demand.service_id:
-        # Match exact service or same category
-        category_id = demand.category_id or (demand.service.category_id if demand.service else None)
-        if category_id:
-            service_filter &= (Q(services__service_id=demand.service_id) | Q(services__service__category_id=category_id))
-        else:
-            service_filter &= Q(services__service_id=demand.service_id)
-    elif demand.category_id:
-        service_filter &= Q(services__service__category_id=demand.category_id)
+        taxonomy_or |= Q(services__service_id=demand.service_id)
+    if demand.subcategory_id:
+        taxonomy_or |= Q(services__subcategory_id=demand.subcategory_id)
+        taxonomy_or |= Q(services__service__subcategory_id=demand.subcategory_id)
+    if demand.category_id:
+        taxonomy_or |= Q(services__category_id=demand.category_id)
+        taxonomy_or |= Q(services__service__category_id=demand.category_id)
+
+    service_filter = Q(services__is_active=True, services__is_available=True)
+    if taxonomy_or:
+        service_filter &= taxonomy_or
 
     queryset = (
         Provider.objects.filter(base_filter)
@@ -43,7 +45,10 @@ def get_candidate_providers_for_demand(demand: Demand) -> QuerySet:
         .prefetch_related(
             'services',
             'services__service',
+            'services__subcategory',
+            'services__category',
             'services__service__category',
+            'services__service__subcategory',
             'service_areas',
             'service_areas__district',
             'service_areas__upazila',

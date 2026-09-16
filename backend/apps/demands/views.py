@@ -76,6 +76,10 @@ class DemandListCreateView(APIView):
         if category_id and category_id.isdigit():
             qs = qs.filter(category_id=int(category_id))
 
+        subcategory_id = request.query_params.get('subcategory_id')
+        if subcategory_id and subcategory_id.isdigit():
+            qs = qs.filter(subcategory_id=int(subcategory_id))
+
         service_id = request.query_params.get('service_id')
         if service_id and service_id.isdigit():
             qs = qs.filter(service_id=int(service_id))
@@ -133,6 +137,8 @@ class DemandListCreateView(APIView):
             val_data['service_id'] = val_data.pop('service').id
         if 'category' in val_data and val_data['category']:
             val_data['category_id'] = val_data.pop('category').id
+        if 'subcategory' in val_data and val_data['subcategory']:
+            val_data['subcategory_id'] = val_data.pop('subcategory').id
         if 'district' in val_data and val_data['district']:
             val_data['district_id'] = val_data.pop('district').id
         if 'upazila' in val_data and val_data['upazila']:
@@ -212,6 +218,9 @@ class DemandDetailView(APIView):
         if 'category' in val_data:
             cat = val_data.pop('category')
             val_data['category_id'] = cat.id if cat else None
+        if 'subcategory' in val_data:
+            sub = val_data.pop('subcategory')
+            val_data['subcategory_id'] = sub.id if sub else None
         if 'district' in val_data:
             dist = val_data.pop('district')
             val_data['district_id'] = dist.id if dist else None

@@ -53,6 +53,9 @@ class DemandListSerializer(serializers.ModelSerializer):
     service_name_bn = serializers.CharField(source='service.name_bn', read_only=True, default='')
     service_name_en = serializers.CharField(source='service.name_en', read_only=True, default='')
     category_name_bn = serializers.CharField(source='category.name_bn', read_only=True, default='')
+    category_name_en = serializers.CharField(source='category.name_en', read_only=True, default='')
+    subcategory_name_bn = serializers.CharField(source='subcategory.name_bn', read_only=True, default='')
+    subcategory_name_en = serializers.CharField(source='subcategory.name_en', read_only=True, default='')
     upazila_name_bn = serializers.CharField(source='upazila.name_bn', read_only=True, default='')
     upazila_name_en = serializers.CharField(source='upazila.name_en', read_only=True, default='')
     district_name_bn = serializers.CharField(source='district.name_bn', read_only=True, default='')
@@ -76,6 +79,10 @@ class DemandListSerializer(serializers.ModelSerializer):
             'service_name_en',
             'category_id',
             'category_name_bn',
+            'category_name_en',
+            'subcategory_id',
+            'subcategory_name_bn',
+            'subcategory_name_en',
             'quantity',
             'unit',
             'budget_min',
@@ -114,7 +121,11 @@ class DemandDetailSerializer(serializers.ModelSerializer):
     contact_preference_display = serializers.CharField(source='get_contact_preference_display', read_only=True)
 
     service_name_bn = serializers.CharField(source='service.name_bn', read_only=True, default='')
+    service_name_en = serializers.CharField(source='service.name_en', read_only=True, default='')
     category_name_bn = serializers.CharField(source='category.name_bn', read_only=True, default='')
+    category_name_en = serializers.CharField(source='category.name_en', read_only=True, default='')
+    subcategory_name_bn = serializers.CharField(source='subcategory.name_bn', read_only=True, default='')
+    subcategory_name_en = serializers.CharField(source='subcategory.name_en', read_only=True, default='')
     upazila_name_bn = serializers.CharField(source='upazila.name_bn', read_only=True, default='')
     district_name_bn = serializers.CharField(source='district.name_bn', read_only=True, default='')
 
@@ -143,8 +154,13 @@ class DemandDetailSerializer(serializers.ModelSerializer):
             'priority_display',
             'service_id',
             'service_name_bn',
+            'service_name_en',
             'category_id',
             'category_name_bn',
+            'category_name_en',
+            'subcategory_id',
+            'subcategory_name_bn',
+            'subcategory_name_en',
             'quantity',
             'unit',
             'budget_min',
@@ -233,6 +249,7 @@ class DemandCreateSerializer(serializers.ModelSerializer):
         fields = [
             'service',
             'category',
+            'subcategory',
             'title_bn',
             'title_en',
             'description_bn',
@@ -263,6 +280,26 @@ class DemandCreateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         validate_demand_budget(attrs.get('budget_min'), attrs.get('budget_max'))
         validate_demand_quantity(attrs.get('quantity'), attrs.get('unit'))
+
+        category = attrs.get('category')
+        subcategory = attrs.get('subcategory')
+        service = attrs.get('service')
+
+        if subcategory and category and subcategory.category_id != category.id:
+            raise serializers.ValidationError({
+                'subcategory': 'নির্বাচিত সাব-ক্যাটাগরি প্রধান ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।'
+            })
+
+        if service:
+            if category and service.category_id != category.id:
+                raise serializers.ValidationError({
+                    'service': 'নির্বাচিত সেবাটি প্রধান ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।'
+                })
+            if subcategory and service.subcategory_id and service.subcategory_id != subcategory.id:
+                raise serializers.ValidationError({
+                    'service': 'নির্বাচিত সেবাটি সাব-ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।'
+                })
+
         return attrs
 
 
@@ -275,6 +312,7 @@ class DemandUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'service',
             'category',
+            'subcategory',
             'title_bn',
             'title_en',
             'description_bn',
@@ -304,4 +342,24 @@ class DemandUpdateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         validate_demand_budget(attrs.get('budget_min'), attrs.get('budget_max'))
         validate_demand_quantity(attrs.get('quantity'), attrs.get('unit'))
+
+        category = attrs.get('category') or getattr(self.instance, 'category', None)
+        subcategory = attrs.get('subcategory') or getattr(self.instance, 'subcategory', None)
+        service = attrs.get('service') or getattr(self.instance, 'service', None)
+
+        if subcategory and category and subcategory.category_id != category.id:
+            raise serializers.ValidationError({
+                'subcategory': 'নির্বাচিত সাব-ক্যাটাগরি প্রধান ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।'
+            })
+
+        if service:
+            if category and service.category_id != category.id:
+                raise serializers.ValidationError({
+                    'service': 'নির্বাচিত সেবাটি প্রধান ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।'
+                })
+            if subcategory and service.subcategory_id and service.subcategory_id != subcategory.id:
+                raise serializers.ValidationError({
+                    'service': 'নির্বাচিত সেবাটি সাব-ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।'
+                })
+
         return attrs

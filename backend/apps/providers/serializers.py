@@ -57,13 +57,17 @@ class ProviderServiceAreaSerializer(serializers.ModelSerializer):
 class ProviderServiceSerializer(serializers.ModelSerializer):
     """
     Serializer for mapped service offerings.
-    Preserves platform service capabilities as Single Source of Truth.
+    Preserves platform Master Taxonomy capabilities as Single Source of Truth.
     """
-    service_name_bn = serializers.ReadOnlyField(source='service.name_bn')
-    service_name_en = serializers.ReadOnlyField(source='service.name_en')
-    service_slug = serializers.ReadOnlyField(source='service.slug')
-    category_id = serializers.ReadOnlyField(source='service.category_id')
-    category_name_bn = serializers.ReadOnlyField(source='service.category.name_bn')
+    service_name_bn = serializers.ReadOnlyField(source='service.name_bn', default='')
+    service_name_en = serializers.ReadOnlyField(source='service.name_en', default='')
+    service_slug = serializers.ReadOnlyField(source='service.slug', default='')
+    category_id = serializers.SerializerMethodField()
+    category_name_bn = serializers.SerializerMethodField()
+    category_name_en = serializers.SerializerMethodField()
+    subcategory_id = serializers.SerializerMethodField()
+    subcategory_name_bn = serializers.SerializerMethodField()
+    subcategory_name_en = serializers.SerializerMethodField()
     capabilities = serializers.ReadOnlyField(source='effective_capabilities')
 
     class Meta:
@@ -71,12 +75,20 @@ class ProviderServiceSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'provider_id',
+            'category',
+            'category_id',
+            'category_name_bn',
+            'category_name_en',
+            'subcategory',
+            'subcategory_id',
+            'subcategory_name_bn',
+            'subcategory_name_en',
             'service',
             'service_name_bn',
             'service_name_en',
             'service_slug',
-            'category_id',
-            'category_name_bn',
+            'skills',
+            'custom_specialty',
             'title_bn',
             'title_en',
             'description_bn',
@@ -89,6 +101,79 @@ class ProviderServiceSerializer(serializers.ModelSerializer):
             'created_at',
         ]
         read_only_fields = ['id', 'provider_id', 'created_at', 'capabilities']
+
+    def get_category_id(self, obj):
+        if obj.category_id:
+            return obj.category_id
+        if obj.subcategory and obj.subcategory.category_id:
+            return obj.subcategory.category_id
+        if obj.service and obj.service.category_id:
+            return obj.service.category_id
+        return None
+
+    def get_category_name_bn(self, obj):
+        if obj.category:
+            return obj.category.name_bn
+        if obj.subcategory and obj.subcategory.category:
+            return obj.subcategory.category.name_bn
+        if obj.service and obj.service.category:
+            return obj.service.category.name_bn
+        return ''
+
+    def get_category_name_en(self, obj):
+        if obj.category:
+            return obj.category.name_en
+        if obj.subcategory and obj.subcategory.category:
+            return obj.subcategory.category.name_en
+        if obj.service and obj.service.category:
+            return obj.service.category.name_en
+        return ''
+
+    def get_subcategory_id(self, obj):
+        if obj.subcategory_id:
+            return obj.subcategory_id
+        if obj.service and obj.service.subcategory_id:
+            return obj.service.subcategory_id
+        return None
+
+    def get_subcategory_name_bn(self, obj):
+        if obj.subcategory:
+            return obj.subcategory.name_bn
+        if obj.service and obj.service.subcategory:
+            return obj.service.subcategory.name_bn
+        return ''
+
+    def get_subcategory_name_en(self, obj):
+        if obj.subcategory:
+            return obj.subcategory.name_en
+        if obj.service and obj.service.subcategory:
+            return obj.service.subcategory.name_en
+        return ''
+
+    def validate(self, attrs):
+        category = attrs.get('category') or getattr(self.instance, 'category', None)
+        subcategory = attrs.get('subcategory') or getattr(self.instance, 'subcategory', None)
+        service = attrs.get('service') or getattr(self.instance, 'service', None)
+
+        if not category and not subcategory and not service:
+            raise serializers.ValidationError("ক্যাটাগরি, সাব-ক্যাটাগরি অথবা নির্দিষ্ট সেবা নির্বাচন করুন।")
+
+        if subcategory and category and subcategory.category_id != category.id:
+            raise serializers.ValidationError({
+                'subcategory': 'নির্বাচিত সাব-ক্যাটাগরি প্রধান ক্যাটাগরির অন্তর্ভুক্ত নয়।'
+            })
+
+        if service:
+            if category and service.category_id != category.id:
+                raise serializers.ValidationError({
+                    'service': 'নির্বাচিত সেবাটি প্রধান ক্যাটাগরির অন্তর্ভুক্ত নয়।'
+                })
+            if subcategory and service.subcategory_id and service.subcategory_id != subcategory.id:
+                raise serializers.ValidationError({
+                    'service': 'নির্বাচিত সেবাটি সাব-ক্যাটাগরির অন্তর্ভুক্ত নয়।'
+                })
+
+        return attrs
 
 
 class ProviderListSerializer(serializers.ModelSerializer):

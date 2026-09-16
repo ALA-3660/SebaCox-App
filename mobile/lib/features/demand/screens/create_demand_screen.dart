@@ -394,6 +394,8 @@ class _CreateDemandScreenState extends State<CreateDemandScreen> {
       'description_bn': _descController.text.trim(),
       'category_id': _selectedCategoryId,
       'category_name_bn': _selectedCategoryNameBn,
+      'subcategory_id': _selectedServiceId,
+      'subcategory_name_bn': _selectedServiceNameBn,
       'service_id': _selectedServiceId,
       'service_name_bn': _selectedServiceNameBn,
       'district_id': _selectedDistrictId,

@@ -94,14 +94,26 @@ class TaxonomyAliasAdmin(admin.ModelAdmin):
         'normalized_text',
         'target_type',
         'target_id',
+        'alias_type',
+        'priority',
         'category',
         'subcategory',
         'language',
         'is_active',
     ]
-    list_filter = ['target_type', 'language', 'is_active', 'category']
+    list_filter = ['target_type', 'alias_type', 'language', 'is_active', 'category']
     search_fields = ['alias_text', 'normalized_text']
     raw_id_fields = ['category', 'subcategory']
+    ordering = ['-priority', 'alias_text']
+    actions = ['make_active', 'make_inactive']
+
+    @admin.action(description='নির্বাচিত এলিয়াসসমূহ সক্রিয় করুন (Activate)')
+    def make_active(self, request, queryset):
+        queryset.update(is_active=True)
+
+    @admin.action(description='নির্বাচিত এলিয়াসসমূহ নিষ্ক্রিয় করুন (Deactivate)')
+    def make_inactive(self, request, queryset):
+        queryset.update(is_active=False)
 
 
 @admin.register(Service)

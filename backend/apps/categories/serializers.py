@@ -139,6 +139,9 @@ class CategoryTreeSerializer(serializers.ModelSerializer):
 
 class TaxonomyAliasSerializer(serializers.ModelSerializer):
     """Serializer for taxonomy alias and search synonyms."""
+    category_name_bn = serializers.CharField(source='category.name_bn', read_only=True)
+    subcategory_name_bn = serializers.CharField(source='subcategory.name_bn', read_only=True)
+
     class Meta:
         model = TaxonomyAlias
         fields = [
@@ -148,8 +151,13 @@ class TaxonomyAliasSerializer(serializers.ModelSerializer):
             'target_type',
             'target_id',
             'language',
+            'alias_type',
+            'priority',
+            'service_type',
             'category',
+            'category_name_bn',
             'subcategory',
+            'subcategory_name_bn',
             'is_active',
         ]
 

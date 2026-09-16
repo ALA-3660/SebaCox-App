@@ -4,20 +4,33 @@ Master Taxonomy v1.0 Universal Hierarchy, Alias Matching & Bilingual Search.
 "প্রয়োজন থেকে সমাধান- এক অ্যাপেই"
 "খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই"
 """
+import re
 import unicodedata
 from typing import List, Dict, Any, Optional
 from django.db.models import Q, Count
 
 from .models import Category, SubCategory, Service, TaxonomyAlias
-from .constants import CategoryKind, ServiceType, SEBACOX_31_MASTER_CATEGORIES, INITIAL_TAXONOMY_ALIASES
+from .constants import CategoryKind, ServiceType, SEBACOX_31_MASTER_CATEGORIES, INITIAL_TAXONOMY_ALIASES, AliasTargetType
 
 
 def normalize_search_text(text: str) -> str:
-    """Normalizes query text in Bangla (Unicode NFC) and English (case-folded)."""
+    """
+    Normalizes query text in Bangla (Unicode NFC) and English (lowercase).
+    Strips punctuation, collapses multiple whitespaces, and unifies variations.
+    """
     if not text:
         return ''
-    cleaned = unicodedata.normalize('NFC', text.strip())
-    return cleaned.lower()
+    # Unicode NFC Normalization
+    normalized = unicodedata.normalize('NFC', text.strip())
+    # Remove Zero-Width Non-Joiner / Joiner
+    normalized = normalized.replace('\u200c', '').replace('\u200d', '')
+    # Lowercase English characters
+    normalized = normalized.lower()
+    # Strip common punctuation: commas, colons, dashes, question marks, bangs, Bangla Dari (।)
+    normalized = re.sub(r'[\?!,;:\(\)\[\]\{\}\\\/\-_\."\'“”‘’।]+', ' ', normalized)
+    # Collapse multiple whitespaces
+    normalized = re.sub(r'\s+', ' ', normalized).strip()
+    return normalized
 
 
 class CategoryTreeService:
@@ -92,102 +105,307 @@ class CategoryTreeService:
 
 class TaxonomySearchService:
     """
-    Unified Bilingual Search Service for Categories, Subcategories, Services & Aliases.
-    Resolves colloquial queries (e.g. 'রাজমিস্ত্রি', 'মেস্ত্রি', 'গাড়ি ভাড়া', 'doctor') to precise taxonomy nodes.
+    Deterministic, Database-driven Search & Alias Engine for Master Taxonomy v1.0.
+    Implements multi-tiered scoring:
+    - Exact Name match: 100 pts
+    - Exact Alias match: 95 pts
+    - Prefix Name match: 85 pts
+    - Prefix Alias match: 80 pts
+    - Token/Word match: 75 pts
+    - Contains Alias match: 70 pts
+    - Contains Name match: 65 pts
+    - Description/Keyword match: 50 pts
+    Plus popularity and alias priority weight boosts.
     """
 
     @classmethod
-    def search(cls, query: str, limit: int = 20) -> Dict[str, Any]:
+    def search(
+        cls,
+        query: str,
+        category_id: Optional[int] = None,
+        target_types: Optional[List[str]] = None,
+        limit: int = 25
+    ) -> Dict[str, Any]:
         normalized = normalize_search_text(query)
         if not normalized or len(normalized) < 2:
             return {
                 'query': query,
                 'normalized': normalized,
+                'total_matches': 0,
+                'ranked_results': [],
                 'categories': [],
                 'subcategories': [],
                 'services': [],
                 'aliases': [],
             }
 
-        # 1. Search Aliases
-        alias_matches = list(
-            TaxonomyAlias.objects.filter(
-                is_active=True,
-                normalized_text__icontains=normalized
-            ).select_related('category', 'subcategory')[:limit]
-        )
+        query_tokens = [t for t in normalized.split(' ') if len(t) > 1]
+        results_map: Dict[str, Dict[str, Any]] = {}
 
-        # 2. Search SubCategories
-        subcategory_q = Q(is_active=True) & (
-            Q(name_bn__icontains=normalized) |
-            Q(name_en__icontains=normalized) |
-            Q(slug__icontains=normalized)
+        # -------------------------------------------------------------
+        # 1. SEARCH TAXONOMY ALIASES (Synonyms & Vernacular)
+        # -------------------------------------------------------------
+        alias_q = Q(is_active=True) & (
+            Q(normalized_text__iexact=normalized) |
+            Q(normalized_text__istartswith=normalized) |
+            Q(normalized_text__icontains=normalized)
         )
-        subcategories = list(
-            SubCategory.objects.filter(subcategory_q)
-            .select_related('category')
-            .order_by('sort_order', 'name_bn')[:limit]
-        )
+        if category_id:
+            alias_q &= (Q(category_id=category_id) | Q(subcategory__category_id=category_id))
 
-        # 3. Search Master Categories
-        category_q = Q(is_active=True) & (
-            Q(name_bn__icontains=normalized) |
-            Q(name_en__icontains=normalized) |
-            Q(slug__icontains=normalized) |
-            Q(description_bn__icontains=normalized)
-        )
-        categories = list(
-            Category.objects.filter(category_q)
-            .order_by('sort_order', 'name_bn')[:limit]
-        )
-
-        # 4. Search Services
-        service_q = Q(is_active=True) & (
-            Q(name_bn__icontains=normalized) |
-            Q(name_en__icontains=normalized) |
-            Q(slug__icontains=normalized)
-        )
-        services = list(
-            Service.objects.filter(service_q)
+        alias_candidates = list(
+            TaxonomyAlias.objects.filter(alias_q)
             .select_related('category', 'subcategory')
-            .order_by('sort_order', 'name_bn')[:limit]
+            .order_by('-priority', 'alias_text')[:50]
         )
+
+        for alias in alias_candidates:
+            alias_norm = alias.normalized_text
+            score = 60
+            match_type = 'CONTAINS_ALIAS'
+
+            if alias_norm == normalized:
+                score = 95
+                match_type = 'EXACT_ALIAS'
+            elif alias_norm.startswith(normalized):
+                score = 80
+                match_type = 'PREFIX_ALIAS'
+            elif any(t in alias_norm for t in query_tokens):
+                score = 70
+                match_type = 'TOKEN_ALIAS'
+
+            # Add priority weight boost (0-5 pts)
+            priority_boost = min(5, (alias.priority or 100) // 20)
+            score += priority_boost
+
+            if alias.target_type == AliasTargetType.SUBCATEGORY and alias.subcategory:
+                sub = alias.subcategory
+                if not sub.is_active:
+                    continue
+                key = f"sub_{sub.id}"
+                if key not in results_map or results_map[key]['relevance_score'] < score:
+                    pop_boost = 5 if sub.is_popular else 0
+                    results_map[key] = {
+                        'id': sub.id,
+                        'target_type': 'SUBCATEGORY',
+                        'name_bn': sub.name_bn,
+                        'name_en': sub.name_en,
+                        'slug': sub.slug,
+                        'icon': sub.icon or 'layers',
+                        'category_id': sub.category_id,
+                        'category_name_bn': sub.category.name_bn if sub.category else '',
+                        'category_name_en': sub.category.name_en if sub.category else '',
+                        'subcategory_id': sub.id,
+                        'subcategory_name_bn': sub.name_bn,
+                        'subcategory_name_en': sub.name_en,
+                        'relevance_score': score + pop_boost,
+                        'matched_by': match_type,
+                        'matched_alias': alias.alias_text,
+                        'sort_order': sub.sort_order,
+                    }
+
+            elif alias.target_type == AliasTargetType.CATEGORY and alias.category:
+                cat = alias.category
+                if not cat.is_active:
+                    continue
+                key = f"cat_{cat.id}"
+                if key not in results_map or results_map[key]['relevance_score'] < score:
+                    pop_boost = 5 if cat.is_popular else (3 if cat.is_featured else 0)
+                    results_map[key] = {
+                        'id': cat.id,
+                        'target_type': 'CATEGORY',
+                        'name_bn': cat.name_bn,
+                        'name_en': cat.name_en,
+                        'slug': cat.slug,
+                        'icon': cat.icon or 'grid',
+                        'category_id': cat.id,
+                        'category_name_bn': cat.name_bn,
+                        'category_name_en': cat.name_en,
+                        'subcategory_id': None,
+                        'subcategory_name_bn': '',
+                        'subcategory_name_en': '',
+                        'relevance_score': score + pop_boost,
+                        'matched_by': match_type,
+                        'matched_alias': alias.alias_text,
+                        'sort_order': cat.sort_order,
+                    }
+
+        # -------------------------------------------------------------
+        # 2. SEARCH SUBCATEGORIES DIRECTLY
+        # -------------------------------------------------------------
+        sub_q = Q(is_active=True)
+        if category_id:
+            sub_q &= Q(category_id=category_id)
+
+        sub_filter = (
+            Q(name_bn__iexact=normalized) |
+            Q(name_en__iexact=normalized) |
+            Q(slug__iexact=normalized) |
+            Q(name_bn__istartswith=normalized) |
+            Q(name_en__istartswith=normalized) |
+            Q(name_bn__icontains=normalized) |
+            Q(name_en__icontains=normalized) |
+            Q(short_description_bn__icontains=normalized)
+        )
+        for token in query_tokens:
+            sub_filter |= Q(name_bn__icontains=token) | Q(name_en__icontains=token)
+
+        sub_candidates = list(
+            SubCategory.objects.filter(sub_q & sub_filter)
+            .select_related('category')
+            .order_by('sort_order', 'name_bn')[:40]
+        )
+
+        for sub in sub_candidates:
+            key = f"sub_{sub.id}"
+            norm_bn = normalize_search_text(sub.name_bn)
+            norm_en = normalize_search_text(sub.name_en)
+            score = 65
+            match_type = 'CONTAINS_NAME'
+
+            if norm_bn == normalized or norm_en == normalized or sub.slug == normalized:
+                score = 100
+                match_type = 'EXACT_NAME'
+            elif norm_bn.startswith(normalized) or norm_en.startswith(normalized) or sub.slug.startswith(normalized):
+                score = 85
+                match_type = 'PREFIX_NAME'
+            elif any(t in norm_bn or t in norm_en for t in query_tokens):
+                score = 75
+                match_type = 'TOKEN_NAME'
+
+            pop_boost = 5 if sub.is_popular else 0
+            total_score = score + pop_boost
+
+            if key not in results_map or results_map[key]['relevance_score'] < total_score:
+                results_map[key] = {
+                    'id': sub.id,
+                    'target_type': 'SUBCATEGORY',
+                    'name_bn': sub.name_bn,
+                    'name_en': sub.name_en,
+                    'slug': sub.slug,
+                    'icon': sub.icon or 'layers',
+                    'category_id': sub.category_id,
+                    'category_name_bn': sub.category.name_bn if sub.category else '',
+                    'category_name_en': sub.category.name_en if sub.category else '',
+                    'subcategory_id': sub.id,
+                    'subcategory_name_bn': sub.name_bn,
+                    'subcategory_name_en': sub.name_en,
+                    'relevance_score': total_score,
+                    'matched_by': match_type,
+                    'matched_alias': '',
+                    'sort_order': sub.sort_order,
+                }
+
+        # -------------------------------------------------------------
+        # 3. SEARCH MASTER CATEGORIES DIRECTLY
+        # -------------------------------------------------------------
+        cat_filter = (
+            Q(is_active=True) & (
+                Q(name_bn__iexact=normalized) |
+                Q(name_en__iexact=normalized) |
+                Q(slug__iexact=normalized) |
+                Q(name_bn__istartswith=normalized) |
+                Q(name_en__istartswith=normalized) |
+                Q(name_bn__icontains=normalized) |
+                Q(name_en__icontains=normalized) |
+                Q(description_bn__icontains=normalized)
+            )
+        )
+        for token in query_tokens:
+            cat_filter |= Q(name_bn__icontains=token) | Q(name_en__icontains=token)
+
+        cat_candidates = list(
+            Category.objects.filter(cat_filter)
+            .order_by('sort_order', 'name_bn')[:31]
+        )
+
+        for cat in cat_candidates:
+            key = f"cat_{cat.id}"
+            norm_bn = normalize_search_text(cat.name_bn)
+            norm_en = normalize_search_text(cat.name_en)
+            score = 60
+            match_type = 'CONTAINS_NAME'
+
+            if norm_bn == normalized or norm_en == normalized or cat.slug == normalized:
+                score = 100
+                match_type = 'EXACT_NAME'
+            elif norm_bn.startswith(normalized) or norm_en.startswith(normalized) or cat.slug.startswith(normalized):
+                score = 85
+                match_type = 'PREFIX_NAME'
+            elif any(t in norm_bn or t in norm_en for t in query_tokens):
+                score = 75
+                match_type = 'TOKEN_NAME'
+
+            pop_boost = 5 if cat.is_popular else (3 if cat.is_featured else 0)
+            total_score = score + pop_boost
+
+            if key not in results_map or results_map[key]['relevance_score'] < total_score:
+                results_map[key] = {
+                    'id': cat.id,
+                    'target_type': 'CATEGORY',
+                    'name_bn': cat.name_bn,
+                    'name_en': cat.name_en,
+                    'slug': cat.slug,
+                    'icon': cat.icon or 'grid',
+                    'category_id': cat.id,
+                    'category_name_bn': cat.name_bn,
+                    'category_name_en': cat.name_en,
+                    'subcategory_id': None,
+                    'subcategory_name_bn': '',
+                    'subcategory_name_en': '',
+                    'relevance_score': total_score,
+                    'matched_by': match_type,
+                    'matched_alias': '',
+                    'sort_order': cat.sort_order,
+                }
+
+        # -------------------------------------------------------------
+        # 4. RANK & SORT RESULTS
+        # -------------------------------------------------------------
+        ranked_list = list(results_map.values())
+        # Sort deterministically by relevance_score DESC, then sort_order ASC, then name_bn ASC
+        ranked_list.sort(key=lambda item: (-item['relevance_score'], item['sort_order'], item['name_bn']))
+        trimmed_ranked = ranked_list[:limit]
+
+        # Extract categorized subsets for backward-compatible response formats
+        matched_category_ids = set()
+        matched_categories = []
+        matched_subcategories = []
+
+        for item in trimmed_ranked:
+            if item['target_type'] == 'CATEGORY':
+                if item['id'] not in matched_category_ids:
+                    matched_category_ids.add(item['id'])
+                    matched_categories.append({
+                        'id': item['id'],
+                        'name_bn': item['name_bn'],
+                        'name_en': item['name_en'],
+                        'slug': item['slug'],
+                        'icon': item['icon'],
+                    })
+            elif item['target_type'] == 'SUBCATEGORY':
+                matched_subcategories.append({
+                    'id': item['id'],
+                    'category_id': item['category_id'],
+                    'category_name_bn': item['category_name_bn'],
+                    'category_name_en': item['category_name_en'],
+                    'name_bn': item['name_bn'],
+                    'name_en': item['name_en'],
+                    'slug': item['slug'],
+                    'icon': item['icon'],
+                    'relevance_score': item['relevance_score'],
+                    'matched_by': item['matched_by'],
+                    'matched_alias': item['matched_alias'],
+                })
 
         return {
             'query': query,
             'normalized': normalized,
-            'categories': [
-                {
-                    'id': c.id,
-                    'name_bn': c.name_bn,
-                    'name_en': c.name_en,
-                    'slug': c.slug,
-                    'icon': c.icon,
-                }
-                for c in categories
-            ],
-            'subcategories': [
-                {
-                    'id': s.id,
-                    'category_id': s.category_id,
-                    'category_name_bn': s.category.name_bn,
-                    'name_bn': s.name_bn,
-                    'name_en': s.name_en,
-                    'slug': s.slug,
-                }
-                for s in subcategories
-            ],
-            'services': [
-                {
-                    'id': sv.id,
-                    'category_id': sv.category_id,
-                    'category_name_bn': sv.category.name_bn,
-                    'name_bn': sv.name_bn,
-                    'name_en': sv.name_en,
-                    'slug': sv.slug,
-                }
-                for sv in services
-            ],
+            'total_matches': len(trimmed_ranked),
+            'ranked_results': trimmed_ranked,
+            'categories': matched_categories,
+            'subcategories': matched_subcategories,
+            'services': [],
             'aliases': [
                 {
                     'alias_text': a.alias_text,
@@ -195,7 +413,7 @@ class TaxonomySearchService:
                     'target_id': a.target_id,
                     'category_name_bn': a.category.name_bn if a.category else '',
                 }
-                for a in alias_matches
+                for a in alias_candidates[:limit]
             ]
         }
 
@@ -256,7 +474,7 @@ class TaxonomySeedService:
 
     @classmethod
     def seed_master_taxonomy(cls) -> Dict[str, int]:
-        """Seeds the 31 Master Categories and Subcategories."""
+        """Seeds the 31 Master Categories, Subcategories and rich Aliases."""
         cat_created = 0
         cat_updated = 0
         sub_created = 0
@@ -320,6 +538,8 @@ class TaxonomySeedService:
                     'target_type': alias_data['target_type'],
                     'target_id': alias_data['target_id'],
                     'language': alias_data['language'],
+                    'alias_type': alias_data.get('alias_type', 'COMMON'),
+                    'priority': alias_data.get('priority', 100),
                     'is_active': True,
                 }
             )
@@ -332,3 +552,4 @@ class TaxonomySeedService:
             'subcategories_updated': sub_updated,
             'aliases_seeded': alias_count,
         }
+

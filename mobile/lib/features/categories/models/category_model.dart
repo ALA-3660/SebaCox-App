@@ -220,9 +220,73 @@ class TaxonomyAliasItem {
   }
 }
 
+class RankedSearchItem {
+  final int id;
+  final String targetType; // 'CATEGORY' or 'SUBCATEGORY'
+  final String nameBn;
+  final String nameEn;
+  final String slug;
+  final String icon;
+  final int categoryId;
+  final String categoryNameBn;
+  final String categoryNameEn;
+  final int? subcategoryId;
+  final String subcategoryNameBn;
+  final String subcategoryNameEn;
+  final int relevanceScore;
+  final String matchedBy;
+  final String matchedAlias;
+  final int sortOrder;
+
+  const RankedSearchItem({
+    required this.id,
+    required this.targetType,
+    required this.nameBn,
+    required this.nameEn,
+    required this.slug,
+    this.icon = 'layers',
+    required this.categoryId,
+    this.categoryNameBn = '',
+    this.categoryNameEn = '',
+    this.subcategoryId,
+    this.subcategoryNameBn = '',
+    this.subcategoryNameEn = '',
+    this.relevanceScore = 0,
+    this.matchedBy = '',
+    this.matchedAlias = '',
+    this.sortOrder = 0,
+  });
+
+  factory RankedSearchItem.fromJson(Map<String, dynamic> json) {
+    return RankedSearchItem(
+      id: json['id'] as int? ?? 0,
+      targetType: json['target_type'] as String? ?? 'SUBCATEGORY',
+      nameBn: json['name_bn'] as String? ?? '',
+      nameEn: json['name_en'] as String? ?? '',
+      slug: json['slug'] as String? ?? '',
+      icon: json['icon'] as String? ?? 'layers',
+      categoryId: json['category_id'] as int? ?? 0,
+      categoryNameBn: json['category_name_bn'] as String? ?? '',
+      categoryNameEn: json['category_name_en'] as String? ?? '',
+      subcategoryId: json['subcategory_id'] as int?,
+      subcategoryNameBn: json['subcategory_name_bn'] as String? ?? '',
+      subcategoryNameEn: json['subcategory_name_en'] as String? ?? '',
+      relevanceScore: json['relevance_score'] as int? ?? 0,
+      matchedBy: json['matched_by'] as String? ?? '',
+      matchedAlias: json['matched_alias'] as String? ?? '',
+      sortOrder: json['sort_order'] as int? ?? 0,
+    );
+  }
+
+  bool get isCategory => targetType == 'CATEGORY';
+  bool get isSubCategory => targetType == 'SUBCATEGORY';
+}
+
 class TaxonomySearchResult {
   final String query;
   final String normalized;
+  final int totalMatches;
+  final List<RankedSearchItem> rankedResults;
   final List<CategoryItem> categories;
   final List<SubCategoryItem> subcategories;
   final List<ServiceItem> services;
@@ -231,6 +295,8 @@ class TaxonomySearchResult {
   const TaxonomySearchResult({
     required this.query,
     this.normalized = '',
+    this.totalMatches = 0,
+    this.rankedResults = const [],
     this.categories = const [],
     this.subcategories = const [],
     this.services = const [],
@@ -238,6 +304,7 @@ class TaxonomySearchResult {
   });
 
   factory TaxonomySearchResult.fromJson(Map<String, dynamic> json) {
+    var rawRanked = json['ranked_results'] as List<dynamic>? ?? [];
     var rawCats = json['categories'] as List<dynamic>? ?? [];
     var rawSubs = json['subcategories'] as List<dynamic>? ?? [];
     var rawServices = json['services'] as List<dynamic>? ?? [];
@@ -246,6 +313,8 @@ class TaxonomySearchResult {
     return TaxonomySearchResult(
       query: json['query'] as String? ?? '',
       normalized: json['normalized'] as String? ?? '',
+      totalMatches: json['total_matches'] as int? ?? rawRanked.length,
+      rankedResults: rawRanked.map((r) => RankedSearchItem.fromJson(r as Map<String, dynamic>)).toList(),
       categories: rawCats.map((c) => CategoryItem.fromJson(c as Map<String, dynamic>)).toList(),
       subcategories: rawSubs.map((s) => SubCategoryItem.fromJson(s as Map<String, dynamic>)).toList(),
       services: rawServices.map((sv) => ServiceItem.fromJson(sv as Map<String, dynamic>)).toList(),
@@ -254,6 +323,6 @@ class TaxonomySearchResult {
   }
 
   bool get isEmpty =>
-      categories.isEmpty && subcategories.isEmpty && services.isEmpty && aliases.isEmpty;
+      rankedResults.isEmpty && categories.isEmpty && subcategories.isEmpty && services.isEmpty && aliases.isEmpty;
   bool get isNotEmpty => !isEmpty;
 }

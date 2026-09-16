@@ -64,6 +64,15 @@ class Demand(models.Model):
         db_index=True,
         help_text="প্রধান ক্যাটাগরি রেফারেন্স (Phase 4 Category)"
     )
+    subcategory = models.ForeignKey(
+        'categories.SubCategory',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='demands',
+        db_index=True,
+        help_text="উপ-ক্যাটাগরি ট্যাক্সোনমি রেফারেন্স (Master Taxonomy SubCategory)"
+    )
     title_bn = models.CharField(
         max_length=200,
         db_index=True,
@@ -265,6 +274,7 @@ class Demand(models.Model):
             models.Index(fields=['requester', 'status', '-created_at']),
             models.Index(fields=['upazila', 'status', 'is_active']),
             models.Index(fields=['category', 'status', 'is_active']),
+            models.Index(fields=['subcategory', 'status', 'is_active']),
             models.Index(fields=['service', 'status', 'is_active']),
             models.Index(fields=['expires_at', 'status']),
         ]
@@ -277,12 +287,32 @@ class Demand(models.Model):
         validate_demand_budget(self.budget_min, self.budget_max)
         validate_demand_quantity(self.quantity, self.unit)
 
-        # Ensure category matches service category if both are provided
-        if self.service and not self.category:
-            self.category = self.service.category
-        elif self.service and self.category and self.service.category_id != self.category_id:
-            # Reconcile category with service's primary category
-            self.category = self.service.category
+        # Master Taxonomy Integrity Enforcement
+        # 1. Reconcile SubCategory and Category
+        if self.subcategory:
+            if not self.category:
+                self.category = self.subcategory.category
+            elif self.subcategory.category_id != self.category_id:
+                raise ValidationError({
+                    'subcategory': 'নির্বাচিত সাব-ক্যাটাগরিটি এই প্রধান ক্যাটাগরির অন্তর্ভুক্ত নয়।'
+                })
+
+        # 2. Reconcile Service with Category & SubCategory
+        if self.service:
+            if not self.category:
+                self.category = self.service.category
+            elif self.service.category_id != self.category_id:
+                raise ValidationError({
+                    'service': 'নির্বাচিত সেবাটি এই প্রধান ক্যাটাগরির অন্তর্ভুক্ত নয়।'
+                })
+
+            if self.service.subcategory:
+                if not self.subcategory:
+                    self.subcategory = self.service.subcategory
+                elif self.service.subcategory_id != self.subcategory_id:
+                    raise ValidationError({
+                        'service': 'নির্বাচিত সেবাটি এই সাব-ক্যাটাগরির অন্তর্ভুক্ত নয়।'
+                    })
 
     def is_expired(self, current_time=None) -> bool:
         """

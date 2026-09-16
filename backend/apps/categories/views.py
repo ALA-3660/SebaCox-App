@@ -363,7 +363,12 @@ class TaxonomySearchView(views.APIView):
 
     def get(self, request):
         q = request.query_params.get('q', '').strip()
-        results = TaxonomySearchService.search(query=q)
+        cat_id_param = request.query_params.get('category_id') or request.query_params.get('category')
+        category_id = int(cat_id_param) if cat_id_param and cat_id_param.isdigit() else None
+        limit_param = request.query_params.get('limit')
+        limit = int(limit_param) if limit_param and limit_param.isdigit() else 25
+
+        results = TaxonomySearchService.search(query=q, category_id=category_id, limit=limit)
         return StandardResponse.success(
             data=results,
             message="ট্যাক্সোনমি অনুসন্ধান ফলাফল পাওয়া গেছে।"

@@ -45,6 +45,19 @@ class AliasLanguage(models.TextChoices):
     ALL = 'ALL', 'All/Bilingual'
 
 
+class AliasType(models.TextChoices):
+    """Classification of search aliases & phonetic mappings."""
+    EXACT = 'EXACT', 'সঠিক প্রতিশব্দ (Exact Match)'
+    COMMON = 'COMMON', 'বহুল প্রচলিত শব্দ (Common Term)'
+    COLLOQUIAL = 'COLLOQUIAL', 'স্থানীয় ও কথ্য ভাষা (Colloquial / Vernacular)'
+    SPELLING_VARIANT = 'SPELLING_VARIANT', 'বানান রূপভেদ (Spelling Variant)'
+    BANGLA = 'BANGLA', 'বাংলা প্রতিশব্দ (Bangla Synonym)'
+    ENGLISH = 'ENGLISH', 'ইংরেজি পরিভাষা (English Keyword)'
+    ABBREVIATION = 'ABBREVIATION', 'সংক্ষিপ্ত রূপ (Abbreviation / Acronym)'
+    LOCAL_TERM = 'LOCAL_TERM', 'কক্সবাজার আঞ্চলিক শব্দ (Cox Local Term)'
+    TYPO = 'TYPO', 'সাধারণ টাইপো (Phonetic / Common Typo)'
+
+
 # =============================================================================
 # SEBACOX MASTER TAXONOMY VERSION 1.0: 31 MASTER CATEGORIES & APPROVED SUBCATEGORIES
 # =============================================================================
@@ -753,48 +766,114 @@ SEBACOX_31_MASTER_CATEGORIES = [
 # INITIAL TAXONOMY SEARCH SYNONYMS / ALIASES
 # =============================================================================
 INITIAL_TAXONOMY_ALIASES = [
-    # Mason / Construction skills
-    {'alias_text': 'রাজমিস্ত্রি', 'normalized_text': 'রাজমিস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 102, 'language': AliasLanguage.BN, 'category_id': 1},
-    {'alias_text': 'মেস্ত্রি', 'normalized_text': 'মেস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 102, 'language': AliasLanguage.BN, 'category_id': 1},
-    {'alias_text': 'mason', 'normalized_text': 'mason', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 102, 'language': AliasLanguage.EN, 'category_id': 1},
-    {'alias_text': 'রড মিস্ত্রি', 'normalized_text': 'রড মিস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 102, 'language': AliasLanguage.BN, 'category_id': 1},
-    {'alias_text': 'ঢালাই মিস্ত্রি', 'normalized_text': 'ঢালাই মিস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 102, 'language': AliasLanguage.BN, 'category_id': 1},
-    {'alias_text': 'ইট বালু', 'normalized_text': 'ইট বালু', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 101, 'language': AliasLanguage.BN, 'category_id': 1},
+    # 01. Construction & Engineering (Category 1)
+    {'alias_text': 'রাজমিস্ত্রি', 'normalized_text': 'রাজমিস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 102, 'language': AliasLanguage.BN, 'category_id': 1, 'alias_type': AliasType.EXACT, 'priority': 100},
+    {'alias_text': 'মেস্ত্রি', 'normalized_text': 'মেস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 102, 'language': AliasLanguage.BN, 'category_id': 1, 'alias_type': AliasType.COLLOQUIAL, 'priority': 95},
+    {'alias_text': 'mason', 'normalized_text': 'mason', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 102, 'language': AliasLanguage.EN, 'category_id': 1, 'alias_type': AliasType.ENGLISH, 'priority': 90},
+    {'alias_text': 'রাজ মিস্ত্রি', 'normalized_text': 'রাজ মিস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 102, 'language': AliasLanguage.BN, 'category_id': 1, 'alias_type': AliasType.SPELLING_VARIANT, 'priority': 95},
+    {'alias_text': 'রড মিস্ত্রি', 'normalized_text': 'রড মিস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 102, 'language': AliasLanguage.BN, 'category_id': 1, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'রডমিস্ত্রি', 'normalized_text': 'রডমিস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 102, 'language': AliasLanguage.BN, 'category_id': 1, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'ঢালাই মিস্ত্রি', 'normalized_text': 'ঢালাই মিস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 102, 'language': AliasLanguage.BN, 'category_id': 1, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'ইট বালু', 'normalized_text': 'ইট বালু', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 101, 'language': AliasLanguage.BN, 'category_id': 1, 'alias_type': AliasType.COMMON, 'priority': 85},
+    {'alias_text': 'সিমেন্ট রড', 'normalized_text': 'সিমেন্ট রড', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 101, 'language': AliasLanguage.BN, 'category_id': 1, 'alias_type': AliasType.COMMON, 'priority': 85},
+    {'alias_text': 'টাইলস মিস্ত্রি', 'normalized_text': 'টাইলস মিস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 103, 'language': AliasLanguage.BN, 'category_id': 1, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'রং মিস্ত্রি', 'normalized_text': 'রং মিস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 104, 'language': AliasLanguage.BN, 'category_id': 1, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'প্লাম্বার', 'normalized_text': 'প্লাম্বার', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 105, 'language': AliasLanguage.BN, 'category_id': 1, 'alias_type': AliasType.EXACT, 'priority': 95},
+    {'alias_text': 'plumber', 'normalized_text': 'plumber', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 105, 'language': AliasLanguage.EN, 'category_id': 1, 'alias_type': AliasType.ENGLISH, 'priority': 90},
+    {'alias_text': 'পাইপ মিস্ত্রি', 'normalized_text': 'পাইপ মিস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 105, 'language': AliasLanguage.BN, 'category_id': 1, 'alias_type': AliasType.COLLOQUIAL, 'priority': 90},
 
-    # Electrician
-    {'alias_text': 'ইলেকট্রিশিয়ান', 'normalized_text': 'ইলেকট্রিশিয়ান', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 201, 'language': AliasLanguage.BN, 'category_id': 2},
-    {'alias_text': 'electrician', 'normalized_text': 'electrician', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 201, 'language': AliasLanguage.EN, 'category_id': 2},
-    {'alias_text': 'কারেন্ট মিস্ত্রি', 'normalized_text': 'কারেন্ট মিস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 201, 'language': AliasLanguage.BN, 'category_id': 2},
-    {'alias_text': 'এসি মেকানিক', 'normalized_text': 'এসি মেকানিক', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 202, 'language': AliasLanguage.BN, 'category_id': 2},
-    {'alias_text': 'ac servicing', 'normalized_text': 'ac servicing', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 202, 'language': AliasLanguage.EN, 'category_id': 2},
-    {'alias_text': 'ফ্রিজ মিস্ত্রি', 'normalized_text': 'ফ্রিজ মিস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 203, 'language': AliasLanguage.BN, 'category_id': 2},
+    # 02. Home & Office Maintenance (Category 2)
+    {'alias_text': 'ইলেকট্রিশিয়ান', 'normalized_text': 'ইলেকট্রিশিয়ান', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 201, 'language': AliasLanguage.BN, 'category_id': 2, 'alias_type': AliasType.EXACT, 'priority': 100},
+    {'alias_text': 'ইলেকট্রিশিয়ান', 'normalized_text': 'ইলেকট্রিশিয়ান', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 201, 'language': AliasLanguage.BN, 'category_id': 2, 'alias_type': AliasType.SPELLING_VARIANT, 'priority': 100},
+    {'alias_text': 'electrician', 'normalized_text': 'electrician', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 201, 'language': AliasLanguage.EN, 'category_id': 2, 'alias_type': AliasType.ENGLISH, 'priority': 95},
+    {'alias_text': 'কারেন্ট মিস্ত্রি', 'normalized_text': 'কারেন্ট মিস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 201, 'language': AliasLanguage.BN, 'category_id': 2, 'alias_type': AliasType.COLLOQUIAL, 'priority': 90},
+    {'alias_text': 'এসি মেকানিক', 'normalized_text': 'এসি মেকানিক', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 202, 'language': AliasLanguage.BN, 'category_id': 2, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'ac servicing', 'normalized_text': 'ac servicing', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 202, 'language': AliasLanguage.EN, 'category_id': 2, 'alias_type': AliasType.ENGLISH, 'priority': 90},
+    {'alias_text': 'ac repair', 'normalized_text': 'ac repair', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 202, 'language': AliasLanguage.EN, 'category_id': 2, 'alias_type': AliasType.ENGLISH, 'priority': 90},
+    {'alias_text': 'ফ্রিজ মিস্ত্রি', 'normalized_text': 'ফ্রিজ মিস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 203, 'language': AliasLanguage.BN, 'category_id': 2, 'alias_type': AliasType.COLLOQUIAL, 'priority': 95},
+    {'alias_text': 'ফ্রিজ', 'normalized_text': 'ফ্রিজ', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 203, 'language': AliasLanguage.BN, 'category_id': 2, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'fridge', 'normalized_text': 'fridge', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 203, 'language': AliasLanguage.EN, 'category_id': 2, 'alias_type': AliasType.ENGLISH, 'priority': 90},
+    {'alias_text': 'ফ্রিজ নষ্ট', 'normalized_text': 'ফ্রিজ নষ্ট', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 203, 'language': AliasLanguage.BN, 'category_id': 2, 'alias_type': AliasType.COLLOQUIAL, 'priority': 85},
+    {'alias_text': 'ফ্রিজ মেরামত', 'normalized_text': 'ফ্রিজ মেরামত', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 203, 'language': AliasLanguage.BN, 'category_id': 2, 'alias_type': AliasType.COMMON, 'priority': 95},
+    {'alias_text': 'পানির পাম্প মেরামত', 'normalized_text': 'পানির পাম্প মেরামত', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 205, 'language': AliasLanguage.BN, 'category_id': 2, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'কাঠমিস্ত্রি', 'normalized_text': 'কাঠমিস্ত্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 209, 'language': AliasLanguage.BN, 'category_id': 2, 'alias_type': AliasType.EXACT, 'priority': 95},
+    {'alias_text': 'carpenter', 'normalized_text': 'carpenter', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 209, 'language': AliasLanguage.EN, 'category_id': 2, 'alias_type': AliasType.ENGLISH, 'priority': 90},
 
-    # Transport / Shifting
-    {'alias_text': 'বাসা বদল', 'normalized_text': 'বাসা বদল', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 401, 'language': AliasLanguage.BN, 'category_id': 4},
-    {'alias_text': 'house shifting', 'normalized_text': 'house shifting', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 401, 'language': AliasLanguage.EN, 'category_id': 4},
-    {'alias_text': 'পিকআপ ভাড়া', 'normalized_text': 'পিকআপ ভাড়া', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 402, 'language': AliasLanguage.BN, 'category_id': 4},
-    {'alias_text': 'pickup rental', 'normalized_text': 'pickup rental', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 402, 'language': AliasLanguage.EN, 'category_id': 4},
-    {'alias_text': 'চাঁন্দের গাড়ি', 'normalized_text': 'চাঁন্দের গাড়ি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 603, 'language': AliasLanguage.BN, 'category_id': 6},
-    {'alias_text': 'chander gari', 'normalized_text': 'chander gari', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 603, 'language': AliasLanguage.EN, 'category_id': 6},
+    # 03. Cleaning & Housekeeping (Category 3)
+    {'alias_text': 'ডিপ ক্লিনিং', 'normalized_text': 'ডিপ ক্লিনিং', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 301, 'language': AliasLanguage.BN, 'category_id': 3, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'cleaning', 'normalized_text': 'cleaning', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 301, 'language': AliasLanguage.EN, 'category_id': 3, 'alias_type': AliasType.ENGLISH, 'priority': 85},
+    {'alias_text': 'সোফা ওয়াশ', 'normalized_text': 'সোফা ওয়াশ', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 303, 'language': AliasLanguage.BN, 'category_id': 3, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'কার্পেট ওয়াশ', 'normalized_text': 'কার্পেট ওয়াশ', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 303, 'language': AliasLanguage.BN, 'category_id': 3, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'পেস্ট কন্ট্রোল', 'normalized_text': 'পেস্ট কন্ট্রোল', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 305, 'language': AliasLanguage.BN, 'category_id': 3, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'pest control', 'normalized_text': 'pest control', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 305, 'language': AliasLanguage.EN, 'category_id': 3, 'alias_type': AliasType.ENGLISH, 'priority': 90},
 
-    # Hotel & Tourism
-    {'alias_text': 'হোটেল বুকিং', 'normalized_text': 'হোটেল বুকিং', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 801, 'language': AliasLanguage.BN, 'category_id': 8},
-    {'alias_text': 'hotel room', 'normalized_text': 'hotel room', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 801, 'language': AliasLanguage.EN, 'category_id': 8},
-    {'alias_text': 'সেন্টমার্টিন জাহাজ', 'normalized_text': 'সেন্টমার্টিন জাহাজ', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 902, 'language': AliasLanguage.BN, 'category_id': 9},
-    {'alias_text': 'saint martin ship', 'normalized_text': 'saint martin ship', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 902, 'language': AliasLanguage.EN, 'category_id': 9},
+    # 04. Transport & Logistics (Category 4)
+    {'alias_text': 'বাসা বদল', 'normalized_text': 'বাসা বদল', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 401, 'language': AliasLanguage.BN, 'category_id': 4, 'alias_type': AliasType.COMMON, 'priority': 95},
+    {'alias_text': 'house shifting', 'normalized_text': 'house shifting', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 401, 'language': AliasLanguage.EN, 'category_id': 4, 'alias_type': AliasType.ENGLISH, 'priority': 95},
+    {'alias_text': 'পিকআপ ভাড়া', 'normalized_text': 'পিকআপ ভাড়া', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 402, 'language': AliasLanguage.BN, 'category_id': 4, 'alias_type': AliasType.COMMON, 'priority': 95},
+    {'alias_text': 'pickup rental', 'normalized_text': 'pickup rental', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 402, 'language': AliasLanguage.EN, 'category_id': 4, 'alias_type': AliasType.ENGLISH, 'priority': 90},
+    {'alias_text': 'মালামাল লেবার', 'normalized_text': 'মালামাল লেবার', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 404, 'language': AliasLanguage.BN, 'category_id': 4, 'alias_type': AliasType.COMMON, 'priority': 85},
 
-    # Health & Emergency
-    {'alias_text': 'ডাক্তার', 'normalized_text': 'ডাক্তার', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1201, 'language': AliasLanguage.BN, 'category_id': 12},
-    {'alias_text': 'doctor', 'normalized_text': 'doctor', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1201, 'language': AliasLanguage.EN, 'category_id': 12},
-    {'alias_text': 'অ্যাম্বুলেন্স', 'normalized_text': 'অ্যাম্বুলেন্স', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2601, 'language': AliasLanguage.BN, 'category_id': 26},
-    {'alias_text': 'ambulance', 'normalized_text': 'ambulance', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2601, 'language': AliasLanguage.EN, 'category_id': 26},
-    {'alias_text': 'অক্সিজেন', 'normalized_text': 'অক্সিজেন', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2602, 'language': AliasLanguage.BN, 'category_id': 26},
-    {'alias_text': 'oxygen cylinder', 'normalized_text': 'oxygen cylinder', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2602, 'language': AliasLanguage.EN, 'category_id': 26},
+    # 06. Vehicle Rental & Local Transport (Category 6)
+    {'alias_text': 'চাঁন্দের গাড়ি', 'normalized_text': 'চাঁন্দের গাড়ি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 603, 'language': AliasLanguage.BN, 'category_id': 6, 'alias_type': AliasType.LOCAL_TERM, 'priority': 100},
+    {'alias_text': 'chander gari', 'normalized_text': 'chander gari', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 603, 'language': AliasLanguage.EN, 'category_id': 6, 'alias_type': AliasType.LOCAL_TERM, 'priority': 100},
+    {'alias_text': 'গাড়ি ভাড়া', 'normalized_text': 'গাড়ি ভাড়া', 'target_type': AliasTargetType.CATEGORY, 'target_id': 6, 'language': AliasLanguage.BN, 'category_id': 6, 'alias_type': AliasType.COMMON, 'priority': 95},
+    {'alias_text': 'car rental', 'normalized_text': 'car rental', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 601, 'language': AliasLanguage.EN, 'category_id': 6, 'alias_type': AliasType.ENGLISH, 'priority': 90},
+    {'alias_text': 'মাইক্রোবাস ভাড়া', 'normalized_text': 'মাইক্রোবাস ভাড়া', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 602, 'language': AliasLanguage.BN, 'category_id': 6, 'alias_type': AliasType.COMMON, 'priority': 90},
 
-    # Dry Fish & Cox's Bazar specials
-    {'alias_text': 'শুঁটকি', 'normalized_text': 'শুঁটকি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1001, 'language': AliasLanguage.BN, 'category_id': 10},
-    {'alias_text': 'নাজিরারটেক শুঁটকি', 'normalized_text': 'নাজিরারটেক শুঁটকি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1001, 'language': AliasLanguage.BN, 'category_id': 10},
-    {'alias_text': 'dry fish', 'normalized_text': 'dry fish', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1001, 'language': AliasLanguage.EN, 'category_id': 10},
-    {'alias_text': 'লবণ মাঠ', 'normalized_text': 'লবণ মাঠ', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1004, 'language': AliasLanguage.BN, 'category_id': 10},
-    {'alias_text': 'পান সুপারি', 'normalized_text': 'পান সুপারি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1003, 'language': AliasLanguage.BN, 'category_id': 10},
+    # 08. Hotel, Resort & Tourism (Category 8)
+    {'alias_text': 'হোটেল বুকিং', 'normalized_text': 'হোটেল বুকিং', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 801, 'language': AliasLanguage.BN, 'category_id': 8, 'alias_type': AliasType.COMMON, 'priority': 95},
+    {'alias_text': 'hotel room', 'normalized_text': 'hotel room', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 801, 'language': AliasLanguage.EN, 'category_id': 8, 'alias_type': AliasType.ENGLISH, 'priority': 95},
+    {'alias_text': 'রিসোর্ট বুকিং', 'normalized_text': 'রিসোর্ট বুকিং', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 802, 'language': AliasLanguage.BN, 'category_id': 8, 'alias_type': AliasType.COMMON, 'priority': 90},
+
+    # 09. Tourism Guide & Beach (Category 9)
+    {'alias_text': 'সেন্টমার্টিন জাহাজ', 'normalized_text': 'সেন্টমার্টিন জাহাজ', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 902, 'language': AliasLanguage.BN, 'category_id': 9, 'alias_type': AliasType.LOCAL_TERM, 'priority': 100},
+    {'alias_text': 'saint martin ship', 'normalized_text': 'saint martin ship', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 902, 'language': AliasLanguage.EN, 'category_id': 9, 'alias_type': AliasType.ENGLISH, 'priority': 95},
+    {'alias_text': 'ট্যুর গাইড', 'normalized_text': 'ট্যুর গাইড', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 901, 'language': AliasLanguage.BN, 'category_id': 9, 'alias_type': AliasType.COMMON, 'priority': 90},
+
+    # 10. Fisheries & Agriculture (Category 10)
+    {'alias_text': 'শুঁটকি', 'normalized_text': 'শুঁটকি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1001, 'language': AliasLanguage.BN, 'category_id': 10, 'alias_type': AliasType.LOCAL_TERM, 'priority': 100},
+    {'alias_text': 'নাজিরারটেক শুঁটকি', 'normalized_text': 'নাজিরারটেক শুঁটকি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1001, 'language': AliasLanguage.BN, 'category_id': 10, 'alias_type': AliasType.LOCAL_TERM, 'priority': 100},
+    {'alias_text': 'dry fish', 'normalized_text': 'dry fish', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1001, 'language': AliasLanguage.EN, 'category_id': 10, 'alias_type': AliasType.ENGLISH, 'priority': 95},
+    {'alias_text': 'লবণ মাঠ', 'normalized_text': 'লবণ মাঠ', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1004, 'language': AliasLanguage.BN, 'category_id': 10, 'alias_type': AliasType.LOCAL_TERM, 'priority': 95},
+    {'alias_text': 'পান সুপারি', 'normalized_text': 'পান সুপারি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1003, 'language': AliasLanguage.BN, 'category_id': 10, 'alias_type': AliasType.LOCAL_TERM, 'priority': 95},
+
+    # 12. Health & Medical (Category 12)
+    {'alias_text': 'ডাক্তার', 'normalized_text': 'ডাক্তার', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1201, 'language': AliasLanguage.BN, 'category_id': 12, 'alias_type': AliasType.EXACT, 'priority': 100},
+    {'alias_text': 'doctor', 'normalized_text': 'doctor', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1201, 'language': AliasLanguage.EN, 'category_id': 12, 'alias_type': AliasType.ENGLISH, 'priority': 95},
+    {'alias_text': 'নার্সিং হোম কেয়ার', 'normalized_text': 'নার্সিং হোম কেয়ার', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1203, 'language': AliasLanguage.BN, 'category_id': 12, 'alias_type': AliasType.COMMON, 'priority': 90},
+
+    # 14. IT & Mobile (Category 14)
+    {'alias_text': 'মোবাইল সার্ভিসিং', 'normalized_text': 'মোবাইল সার্ভিসিং', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1403, 'language': AliasLanguage.BN, 'category_id': 14, 'alias_type': AliasType.COMMON, 'priority': 95},
+    {'alias_text': 'mobile repair', 'normalized_text': 'mobile repair', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1403, 'language': AliasLanguage.EN, 'category_id': 14, 'alias_type': AliasType.ENGLISH, 'priority': 90},
+    {'alias_text': 'কম্পিউটার মেরামত', 'normalized_text': 'কম্পিউটার মেরামত', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1402, 'language': AliasLanguage.BN, 'category_id': 14, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'cctv লাগাব', 'normalized_text': 'cctv লাগাব', 'target_type': AliasTargetType.CATEGORY, 'target_id': 14, 'language': AliasLanguage.BN, 'category_id': 14, 'alias_type': AliasType.COLLOQUIAL, 'priority': 85},
+
+    # 21. Buy & Sell / Second Hand (Category 21)
+    {'alias_text': 'পুরাতন জিনিস বিক্রি', 'normalized_text': 'পুরাতন জিনিস বিক্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2102, 'language': AliasLanguage.BN, 'category_id': 21, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'পুরাতন ফ্রিজ বিক্রি', 'normalized_text': 'পুরাতন ফ্রিজ বিক্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2102, 'language': AliasLanguage.BN, 'category_id': 21, 'alias_type': AliasType.COMMON, 'priority': 95},
+    {'alias_text': 'used fridge', 'normalized_text': 'used fridge', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2102, 'language': AliasLanguage.EN, 'category_id': 21, 'alias_type': AliasType.ENGLISH, 'priority': 90},
+    {'alias_text': 'cctv কিনব', 'normalized_text': 'cctv কিনব', 'target_type': AliasTargetType.CATEGORY, 'target_id': 21, 'language': AliasLanguage.BN, 'category_id': 21, 'alias_type': AliasType.COLLOQUIAL, 'priority': 85},
+
+    # 26. Emergency & Rescue (Category 26)
+    {'alias_text': 'অ্যাম্বুলেন্স', 'normalized_text': 'অ্যাম্বুলেন্স', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2601, 'language': AliasLanguage.BN, 'category_id': 26, 'alias_type': AliasType.EXACT, 'priority': 100},
+    {'alias_text': 'ambulance', 'normalized_text': 'ambulance', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2601, 'language': AliasLanguage.EN, 'category_id': 26, 'alias_type': AliasType.ENGLISH, 'priority': 95},
+    {'alias_text': 'অক্সিজেন', 'normalized_text': 'অক্সিজেন', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2602, 'language': AliasLanguage.BN, 'category_id': 26, 'alias_type': AliasType.EXACT, 'priority': 95},
+    {'alias_text': 'oxygen cylinder', 'normalized_text': 'oxygen cylinder', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2602, 'language': AliasLanguage.EN, 'category_id': 26, 'alias_type': AliasType.ENGLISH, 'priority': 90},
+    {'alias_text': 'জরুরি বিদ্যুৎ সহায়তা', 'normalized_text': 'জরুরি বিদ্যুৎ সহায়তা', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2603, 'language': AliasLanguage.BN, 'category_id': 26, 'alias_type': AliasType.COMMON, 'priority': 95},
+    {'alias_text': 'জরুরি electrician', 'normalized_text': 'জরুরি electrician', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2603, 'language': AliasLanguage.BN, 'category_id': 26, 'alias_type': AliasType.COLLOQUIAL, 'priority': 90},
+
+    # 29. Security & Safety (Category 29)
+    {'alias_text': 'সিসিটিভি', 'normalized_text': 'সিসিটিভি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2904, 'language': AliasLanguage.BN, 'category_id': 29, 'alias_type': AliasType.COMMON, 'priority': 95},
+    {'alias_text': 'cctv', 'normalized_text': 'cctv', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2904, 'language': AliasLanguage.EN, 'category_id': 29, 'alias_type': AliasType.ABBREVIATION, 'priority': 95},
+    {'alias_text': 'cctv monitoring', 'normalized_text': 'cctv monitoring', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2904, 'language': AliasLanguage.EN, 'category_id': 29, 'alias_type': AliasType.ENGLISH, 'priority': 95},
+    {'alias_text': 'সিকিউরিটি গার্ড', 'normalized_text': 'সিকিউরিটি গার্ড', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2901, 'language': AliasLanguage.BN, 'category_id': 29, 'alias_type': AliasType.COMMON, 'priority': 95},
+    {'alias_text': 'security guard', 'normalized_text': 'security guard', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2901, 'language': AliasLanguage.EN, 'category_id': 29, 'alias_type': AliasType.ENGLISH, 'priority': 95},
+    {'alias_text': 'নাইট গার্ড', 'normalized_text': 'নাইট গার্ড', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2902, 'language': AliasLanguage.BN, 'category_id': 29, 'alias_type': AliasType.COMMON, 'priority': 90},
+
+    # 30. Utilities & Power (Category 30)
+    {'alias_text': 'গ্যাস সিলিন্ডার', 'normalized_text': 'গ্যাস সিলিন্ডার', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 3001, 'language': AliasLanguage.BN, 'category_id': 30, 'alias_type': AliasType.COMMON, 'priority': 95},
+    {'alias_text': 'lpg gas', 'normalized_text': 'lpg gas', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 3001, 'language': AliasLanguage.EN, 'category_id': 30, 'alias_type': AliasType.ENGLISH, 'priority': 90},
+    {'alias_text': 'সোলার প্যানেল', 'normalized_text': 'সোলার প্যানেল', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 3002, 'language': AliasLanguage.BN, 'category_id': 30, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'জেনারেটর ভাড়া', 'normalized_text': 'জেনারেটর ভাড়া', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 3003, 'language': AliasLanguage.BN, 'category_id': 30, 'alias_type': AliasType.COMMON, 'priority': 90},
 ]

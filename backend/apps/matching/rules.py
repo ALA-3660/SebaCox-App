@@ -143,17 +143,15 @@ ProviderServiceStatusRule = ServiceOfferingStatusRule
 
 class ServiceMatchRule:
     """
-    Rule 4: Service & Taxonomy Compatibility.
+    Rule 4: Master Taxonomy Compatibility (Service / SubCategory / Skill / Category).
     - Exact Service Match: strongest signal (Demand.service == ProviderService.service)
-    - Category Compatibility: same category fallback (Demand.category == ProviderService.service.category)
+    - Sub-category Match: (Demand.subcategory == ProviderService.subcategory)
+    - Category Compatibility: same category fallback (Demand.category == ProviderService.category)
     - Incompatible: different service/category
     """
     @staticmethod
     def evaluate(demand, provider_service) -> RuleEvaluationResult:
-        demand_service_id = getattr(demand, 'service_id', None)
-        demand_category_id = getattr(demand, 'category_id', None)
-
-        if not provider_service or not getattr(provider_service, 'service', None):
+        if not provider_service:
             return RuleEvaluationResult(
                 rule_name="ServiceMatch",
                 is_eligible=False,
@@ -163,29 +161,52 @@ class ServiceMatchRule:
                 explanation_bn="সেবা সনাক্ত করা সম্ভব হয়নি"
             )
 
-        p_service = provider_service.service
-        p_service_id = p_service.id
-        p_category_id = getattr(p_service, 'category_id', None)
+        demand_service_id = getattr(demand, 'service_id', None)
+        demand_subcategory_id = getattr(demand, 'subcategory_id', None) or (
+            getattr(demand.service, 'subcategory_id', None) if getattr(demand, 'service', None) else None
+        )
+        demand_category_id = getattr(demand, 'category_id', None) or (
+            getattr(demand.service, 'category_id', None) if getattr(demand, 'service', None) else None
+        ) or (
+            getattr(demand.subcategory, 'category_id', None) if getattr(demand, 'subcategory', None) else None
+        )
+
+        p_service_id = getattr(provider_service, 'service_id', None)
+        p_subcategory_id = getattr(provider_service, 'subcategory_id', None) or (
+            getattr(provider_service.service, 'subcategory_id', None) if getattr(provider_service, 'service', None) else None
+        )
+        p_category_id = getattr(provider_service, 'category_id', None) or (
+            getattr(provider_service.service, 'category_id', None) if getattr(provider_service, 'service', None) else None
+        ) or (
+            getattr(provider_service.subcategory, 'category_id', None) if getattr(provider_service, 'subcategory', None) else None
+        )
 
         # 1. Exact Service Match
-        if demand_service_id and demand_service_id == p_service_id:
-            service_name = getattr(p_service, 'name_bn', '')
+        if demand_service_id and p_service_id and demand_service_id == p_service_id:
+            service_name = getattr(provider_service.service, 'name_bn', '') if getattr(provider_service, 'service', None) else ''
             return RuleEvaluationResult(
                 rule_name="ServiceMatch",
                 is_eligible=True,
                 factor_code=MatchFactorCode.SERVICE_EXACT,
                 score_weight_key="SERVICE_EXACT",
                 details={'service_id': p_service_id, 'match_level': ServiceMatchLevel.EXACT},
-                explanation_bn=f"✓ হুবহু একই সেবা ({service_name or 'নির্দিষ্ট সেবা'})"
+                explanation_bn=f"✓ হুবহু একই সেবা ({service_name or provider_service.title_bn or 'নির্দিষ্ট সেবা'})"
             )
 
-        # 2. Category Match
-        # If demand has no specific service, or services differ but categories match
-        eff_demand_cat = demand_category_id
-        if not eff_demand_cat and getattr(demand, 'service', None):
-            eff_demand_cat = getattr(demand.service, 'category_id', None)
+        # 2. Sub-category Match
+        if demand_subcategory_id and p_subcategory_id and demand_subcategory_id == p_subcategory_id:
+            sub_name = getattr(provider_service.subcategory, 'name_bn', '') if getattr(provider_service, 'subcategory', None) else ''
+            return RuleEvaluationResult(
+                rule_name="ServiceMatch",
+                is_eligible=True,
+                factor_code=MatchFactorCode.SERVICE_CATEGORY_COMPATIBLE,
+                score_weight_key="SERVICE_EXACT",
+                details={'subcategory_id': p_subcategory_id, 'match_level': 'SUBCATEGORY'},
+                explanation_bn=f"✓ হুবহু একই সাব-ক্যাটাগরির বিশেষজ্ঞ ({sub_name or 'উপ-ক্যাটাগরি'})"
+            )
 
-        if eff_demand_cat and p_category_id and eff_demand_cat == p_category_id:
+        # 3. Category Match
+        if demand_category_id and p_category_id and demand_category_id == p_category_id:
             return RuleEvaluationResult(
                 rule_name="ServiceMatch",
                 is_eligible=True,
@@ -200,7 +221,7 @@ class ServiceMatchRule:
             is_eligible=False,
             factor_code=MatchFactorCode.SERVICE_INCOMPATIBLE,
             score_weight_key="SERVICE_INCOMPATIBLE",
-            details={'demand_service': demand_service_id, 'provider_service': p_service_id},
+            details={'demand_service': demand_service_id, 'provider_service': p_service_id, 'demand_cat': demand_category_id, 'provider_cat': p_category_id},
             explanation_bn="সেবার ধরন মিল নেই"
         )
 

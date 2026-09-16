@@ -9,16 +9,29 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils.text import slugify
 
-from .constants import CategoryKind, ServiceType, AliasTargetType, AliasLanguage
+from .constants import CategoryKind, ServiceType, AliasTargetType, AliasLanguage, AliasType
 from .validators import validate_slug, validate_no_circular_parent
+import re
 
 
 def normalize_alias_text(text: str) -> str:
-    """Normalizes alias query text in Bangla (Unicode NFC) and English (lowercase)."""
+    """
+    Normalizes alias query text in Bangla (Unicode NFC) and English (lowercase).
+    Strips punctuation, collapses multiple whitespaces, and unifies variations.
+    """
     if not text:
         return ''
-    cleaned = unicodedata.normalize('NFC', text.strip())
-    return cleaned.lower()
+    # Unicode NFC Normalization
+    normalized = unicodedata.normalize('NFC', text.strip())
+    # Remove Zero-Width Non-Joiner / Joiner
+    normalized = normalized.replace('\u200c', '').replace('\u200d', '')
+    # Lowercase English characters
+    normalized = normalized.lower()
+    # Strip common punctuation: commas, colons, dashes, question marks, bangs, Bangla Dari (।)
+    normalized = re.sub(r'[\?!,;:\(\)\[\]\{\}\\\/\-_\."\'“”‘’।]+', ' ', normalized)
+    # Collapse multiple whitespaces
+    normalized = re.sub(r'\s+', ' ', normalized).strip()
+    return normalized
 
 
 class Category(models.Model):
@@ -469,6 +482,24 @@ class TaxonomyAlias(models.Model):
         default=AliasLanguage.BN,
         help_text="ভাষা (BN, EN, ALL)"
     )
+    alias_type = models.CharField(
+        max_length=30,
+        choices=AliasType.choices,
+        default=AliasType.COMMON,
+        db_index=True,
+        help_text="এলিয়াসের ধরণ (EXACT, COMMON, COLLOQUIAL, LOCAL_TERM, etc.)"
+    )
+    priority = models.PositiveIntegerField(
+        default=100,
+        db_index=True,
+        help_text="সার্চ প্রায়োরিটি ওয়েট (উচ্চ মান = উচ্চ স্থান)"
+    )
+    service_type = models.CharField(
+        max_length=30,
+        blank=True,
+        default='',
+        help_text="নির্দিষ্ট সেবার ধরণ (ঐচ্ছিক)"
+    )
     category = models.ForeignKey(
         Category,
         on_delete=models.CASCADE,
@@ -496,10 +527,12 @@ class TaxonomyAlias(models.Model):
     class Meta:
         verbose_name = 'ট্যাক্সোনমি এলিয়াস (Taxonomy Alias)'
         verbose_name_plural = 'ট্যাক্সোনমি এলিয়াসসমূহ (Taxonomy Aliases)'
+        ordering = ['-priority', 'alias_text']
         indexes = [
             models.Index(fields=['normalized_text', 'is_active']),
             models.Index(fields=['target_type', 'target_id']),
             models.Index(fields=['category', 'is_active']),
+            models.Index(fields=['priority', 'is_active']),
         ]
 
     def __str__(self):

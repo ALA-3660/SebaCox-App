@@ -71,6 +71,8 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
   List<CategoryItem> _filteredCategories = [];
   List<SubCategoryItem> _subcategories = [];
   List<SubCategoryItem> _filteredSubcategories = [];
+  TaxonomySearchResult? _taxonomySearchResult;
+  bool _isSearchingTaxonomy = false;
 
   // Selected State
   CategoryItem? _selectedCategory;
@@ -135,11 +137,13 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
     }
   }
 
-  void _filterCategories(String query) {
+  Future<void> _filterCategories(String query) async {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) {
       setState(() {
         _filteredCategories = _allCategories;
+        _taxonomySearchResult = null;
+        _isSearchingTaxonomy = false;
       });
       return;
     }
@@ -153,6 +157,32 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
         return matchBn || matchEn || matchDesc || matchSlug;
       }).toList();
     });
+
+    if (q.length >= 2) {
+      setState(() {
+        _isSearchingTaxonomy = true;
+      });
+      try {
+        final res = await widget.repository.searchTaxonomy(q);
+        if (mounted && _categorySearchController.text.trim().toLowerCase() == q) {
+          setState(() {
+            _taxonomySearchResult = res;
+            _isSearchingTaxonomy = false;
+          });
+        }
+      } catch (_) {
+        if (mounted) {
+          setState(() {
+            _isSearchingTaxonomy = false;
+          });
+        }
+      }
+    } else {
+      setState(() {
+        _taxonomySearchResult = null;
+        _isSearchingTaxonomy = false;
+      });
+    }
   }
 
   Future<void> _selectCategory(CategoryItem cat, {bool autoAdvance = true}) async {
@@ -217,6 +247,55 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
         return matchBn || matchEn || matchDesc || matchSlug;
       }).toList();
     });
+  }
+
+  Future<void> _selectRankedItem(RankedSearchItem item) async {
+    try {
+      CategoryItem targetCat;
+      if (_allCategories.any((c) => c.id == item.categoryId)) {
+        targetCat = _allCategories.firstWhere((c) => c.id == item.categoryId);
+      } else {
+        final fetched = await widget.repository.getMainCategories();
+        targetCat = fetched.firstWhere((c) => c.id == item.categoryId);
+      }
+
+      if (item.isSubCategory && item.id > 0) {
+        // Find or build subcategory item
+        final subs = await widget.repository.getSubcategories(item.categoryId);
+        SubCategoryItem targetSub;
+        if (subs.any((s) => s.id == item.id)) {
+          targetSub = subs.firstWhere((s) => s.id == item.id);
+        } else {
+          targetSub = SubCategoryItem(
+            id: item.id,
+            categoryId: item.categoryId,
+            categoryNameBn: item.categoryNameBn,
+            categoryNameEn: item.categoryNameEn,
+            nameBn: item.nameBn,
+            nameEn: item.nameEn,
+            slug: item.slug,
+            icon: item.icon,
+          );
+        }
+
+        if (mounted) {
+          Navigator.of(context).pop(
+            CategorySelectionResult(
+              category: targetCat,
+              subcategory: targetSub,
+            ),
+          );
+        }
+      } else {
+        // Direct category selection -> proceed to subcategory step
+        _selectCategory(targetCat);
+      }
+    } catch (_) {
+      // Fallback: regular category selection if match resolution fails
+      if (_allCategories.any((c) => c.id == item.categoryId)) {
+        _selectCategory(_allCategories.firstWhere((c) => c.id == item.categoryId));
+      }
+    }
   }
 
   void _selectSubcategory(SubCategoryItem sub) {
@@ -416,11 +495,36 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
 
         // Categories List
         Expanded(
-          child: _filteredCategories.isEmpty
+          child: _filteredCategories.isEmpty && (_taxonomySearchResult == null || _taxonomySearchResult!.rankedResults.isEmpty)
               ? _buildEmptyView('কোনো বিভাগ পাওয়া যায়নি', 'বানান সঠিক আছে কিনা যাচাই করুন অথবা অন্য শব্দে খুঁজুন।')
               : ListView(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                   children: [
+                    // Direct Taxonomy / Alias Matches Section
+                    if (_categorySearchController.text.trim().isNotEmpty &&
+                        _taxonomySearchResult != null &&
+                        _taxonomySearchResult!.rankedResults.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8, top: 4),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.bolt, size: 18, color: AppColors.primary),
+                            const SizedBox(width: 6),
+                            Text(
+                              'সরাসরি মিল পাওয়া গেছে (Direct Match)',
+                              style: AppTypography.mediumHeading2.copyWith(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ..._taxonomySearchResult!.rankedResults.take(4).map((item) => _buildDirectMatchTile(item)),
+                      const SizedBox(height: 14),
+                    ],
+
                     // Popular Categories Section (if not searching)
                     if (_categorySearchController.text.isEmpty && popularCategories.isNotEmpty) ...[
                       Padding(
@@ -460,6 +564,93 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
                 ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDirectMatchTile(RankedSearchItem item) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFF86EFAC),
+          width: 1.2,
+        ),
+      ),
+      child: ListTile(
+        onTap: () => _selectRankedItem(item),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: const Color(0xFFDCFCE7),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(
+            Icons.check_circle_outline,
+            color: Color(0xFF16A34A),
+            size: 22,
+          ),
+        ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                item.nameBn,
+                style: AppTypography.mediumHeading2.copyWith(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF14532D),
+                ),
+              ),
+            ),
+            if (item.matchedAlias.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDCFCE7),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${item.matchedAlias} থেকে',
+                  style: AppTypography.bodySmall.copyWith(
+                    fontSize: 9,
+                    color: const Color(0xFF15803D),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        subtitle: Text(
+          item.isSubCategory
+              ? 'ক্যাটাগরি: ${item.categoryNameBn.isNotEmpty ? item.categoryNameBn : ""}'
+              : (item.nameEn.isNotEmpty ? item.nameEn : 'প্রধান ক্যাটাগরি'),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.bodySmall.copyWith(
+            color: const Color(0xFF166534),
+            fontSize: 11,
+          ),
+        ),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            'নির্বাচন করুন',
+            style: AppTypography.labelSmall.copyWith(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
     );
   }
 

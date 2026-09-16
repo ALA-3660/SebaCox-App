@@ -67,10 +67,14 @@ def validate_demand_for_publish(
     upazila_id=None,
     district_id=None,
     location_display_bn=None,
+    category_id=None,
+    subcategory_id=None,
+    service_id=None,
     current_time=None
 ) -> None:
     """
     Strict server-side validation executed before a Demand can transition to PUBLISHED.
+    Ensures active Master Taxonomy reference and valid hierarchy.
     """
     errors = {}
 
@@ -87,6 +91,10 @@ def validate_demand_for_publish(
     # Location requirement: must have either upazila, district, or explicit location display
     if not upazila_id and not district_id and not (location_display_bn and location_display_bn.strip()):
         errors['location'] = "প্রয়োজনের সুনির্দিষ্ট এলাকা বা উপজেলা নির্বাচন আবশ্যক।"
+
+    # Taxonomy requirement: Category is required for published demand
+    if not category_id and not service_id and not subcategory_id:
+        errors['category'] = "প্রয়োজনের প্রধান ক্যাটাগরি অথবা সেবা নির্বাচন আবশ্যক।"
 
     # Expiration validation
     if not expires_at:

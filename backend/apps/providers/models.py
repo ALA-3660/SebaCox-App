@@ -225,9 +225,9 @@ class Provider(models.Model):
 
 class ProviderService(models.Model):
     """
-    Mapping between Provider and Platform Service.
+    Mapping between Provider and Platform Master Taxonomy (Category / SubCategory / Service / Skill).
     Rule: ProviderService does NOT override platform Service capabilities.
-    The Service model remains the platform's Single Source of Truth.
+    The Service / Category model remains the platform's Single Source of Truth.
     """
     id = models.BigAutoField(primary_key=True)
     provider = models.ForeignKey(
@@ -237,12 +237,43 @@ class ProviderService(models.Model):
         db_index=True,
         help_text="যে সেবাদাতার সেবা"
     )
+    category = models.ForeignKey(
+        'categories.Category',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='provider_services',
+        db_index=True,
+        help_text="প্রধান ক্যাটাগরি ট্যাক্সোনমি রেফারেন্স (Master Category)"
+    )
+    subcategory = models.ForeignKey(
+        'categories.SubCategory',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='provider_services',
+        db_index=True,
+        help_text="উপ-ক্যাটাগরি ট্যাক্সোনমি রেফারেন্স (Master SubCategory)"
+    )
     service = models.ForeignKey(
         'categories.Service',
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
         related_name='provider_offerings',
         db_index=True,
-        help_text="প্ল্যাটফর্ম নির্ধারিত সেবা"
+        help_text="নির্দিষ্ট প্ল্যাটফর্ম নির্ধারিত সেবা (ঐচ্ছিক)"
+    )
+    skills = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="দক্ষতা / স্পেশালিটি তালিকা (Skills / Specialties)"
+    )
+    custom_specialty = models.CharField(
+        max_length=150,
+        blank=True,
+        default='',
+        help_text="কাস্টম স্পেশালিটি / ট্রেড (ঐচ্ছিক)"
     )
     title_bn = models.CharField(
         max_length=150,
@@ -299,20 +330,67 @@ class ProviderService(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=['provider', 'service'],
+                condition=models.Q(service__isnull=False),
                 name='unique_provider_service_mapping'
+            ),
+            models.UniqueConstraint(
+                fields=['provider', 'category', 'subcategory'],
+                condition=models.Q(service__isnull=True, subcategory__isnull=False),
+                name='unique_provider_subcategory_mapping'
             )
         ]
         ordering = ['-is_available', '-created_at']
 
+    def clean(self):
+        super().clean()
+        if not self.category and not self.subcategory and not self.service:
+            raise ValidationError("সেবাদাতার সেবার জন্য ক্যাটাগরি, সাব-ক্যাটাগরি অথবা নির্দিষ্ট সেবা নির্বাচন আবশ্যক।")
+
+        # 1. Reconcile SubCategory and Category
+        if self.subcategory:
+            if not self.category:
+                self.category = self.subcategory.category
+            elif self.subcategory.category_id != self.category_id:
+                raise ValidationError({
+                    'subcategory': 'নির্বাচিত সাব-ক্যাটাগরি প্রধান ক্যাটাগরির সাথে সম্পর্কিত নয়।'
+                })
+
+        # 2. Reconcile Service with Category & SubCategory
+        if self.service:
+            if not self.category:
+                self.category = self.service.category
+            elif self.service.category_id != self.category_id:
+                raise ValidationError({
+                    'service': 'নির্বাচিত সেবাটি প্রধান ক্যাটাগরির অন্তর্ভুক্ত নয়।'
+                })
+
+            if self.service.subcategory:
+                if not self.subcategory:
+                    self.subcategory = self.service.subcategory
+                elif self.service.subcategory_id != self.subcategory_id:
+                    raise ValidationError({
+                        'service': 'নির্বাচিত সেবাটি সাব-ক্যাটাগরির অন্তর্ভুক্ত নয়।'
+                    })
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        name = self.title_bn or (self.service.name_bn if hasattr(self, 'service') else 'Service')
-        return f"{self.provider.display_name_bn} - {name}"
+        name = self.title_bn
+        if not name and self.service_id and hasattr(self, 'service') and self.service:
+            name = self.service.name_bn
+        if not name and self.subcategory_id and hasattr(self, 'subcategory') and self.subcategory:
+            name = self.subcategory.name_bn
+        if not name and self.category_id and hasattr(self, 'category') and self.category:
+            name = self.category.name_bn
+        return f"{self.provider.display_name_bn} - {name or 'Service'}"
 
     @property
     def effective_capabilities(self):
         """
         Guarantees Service capability preservation:
-        Returns capabilities directly from platform Service entity.
+        Returns capabilities directly from platform Service entity if present.
         """
         if not self.service:
             return {}

@@ -103,6 +103,7 @@ class DemandService:
             requester=requester,
             service_id=data.get('service_id'),
             category_id=data.get('category_id'),
+            subcategory_id=data.get('subcategory_id'),
             title_bn=data.get('title_bn', '').strip(),
             title_en=data.get('title_en', '').strip(),
             description_bn=data.get('description_bn', '').strip(),
@@ -170,7 +171,7 @@ class DemandService:
 
         # Allow updating editable fields
         updatable_fields = [
-            'service_id', 'category_id', 'title_bn', 'title_en',
+            'service_id', 'category_id', 'subcategory_id', 'title_bn', 'title_en',
             'description_bn', 'description_en', 'demand_type', 'priority',
             'quantity', 'unit', 'budget_min', 'budget_max', 'currency',
             'required_at', 'expires_at', 'district_id', 'upazila_id',
@@ -202,6 +203,9 @@ class DemandService:
                 upazila_id=demand.upazila_id,
                 district_id=demand.district_id,
                 location_display_bn=demand.location_display_bn,
+                category_id=demand.category_id,
+                subcategory_id=demand.subcategory_id,
+                service_id=demand.service_id,
             )
 
         demand.save()
@@ -255,6 +259,9 @@ class DemandService:
             upazila_id=demand.upazila_id,
             district_id=demand.district_id,
             location_display_bn=demand.location_display_bn,
+            category_id=demand.category_id,
+            subcategory_id=demand.subcategory_id,
+            service_id=demand.service_id,
         )
 
         prev_status = demand.status
