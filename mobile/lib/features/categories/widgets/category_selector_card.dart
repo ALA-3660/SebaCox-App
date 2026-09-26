@@ -1,12 +1,15 @@
 /// Reusable Category Selector Card Component.
 /// Launches the Searchable Cascading Category Picker BottomSheet.
 /// Global Bangla Typography Standard compliant.
+/// "প্রয়োজন থেকে সমাধান- এক অ্যাপেই"
+/// "খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই"
 library;
 
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../models/category_model.dart';
+import '../models/user_intent.dart';
 import '../repositories/category_repository.dart';
 import 'category_cascading_picker.dart';
 
@@ -16,6 +19,7 @@ class CategorySelectorCard extends StatelessWidget {
   final String? selectedCategoryNameBn;
   final int? selectedSubcategoryId;
   final String? selectedSubcategoryNameBn;
+  final String? selectedIntentCode;
   final ValueChanged<CategorySelectionResult> onSelected;
   final VoidCallback? onReset;
   final String label;
@@ -28,6 +32,7 @@ class CategorySelectorCard extends StatelessWidget {
     this.selectedCategoryNameBn,
     this.selectedSubcategoryId,
     this.selectedSubcategoryNameBn,
+    this.selectedIntentCode,
     required this.onSelected,
     this.onReset,
     this.label = 'ক্যাটাগরি ও সেবা *',
@@ -40,6 +45,7 @@ class CategorySelectorCard extends StatelessWidget {
       repository: repository,
       initialCategoryId: selectedCategoryId,
       initialSubcategoryId: selectedSubcategoryId,
+      initialIntentCode: selectedIntentCode,
       title: label,
     );
 

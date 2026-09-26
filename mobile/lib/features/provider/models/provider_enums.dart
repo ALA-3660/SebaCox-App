@@ -116,7 +116,8 @@ enum PriceType {
   hourly('HOURLY', 'প্রতি ঘণ্টা', 'Hourly Rate'),
   daily('DAILY', 'প্রতি দিন', 'Daily Rate'),
   perUnit('PER_UNIT', 'প্রতি একক', 'Per Unit'),
-  negotiable('NEGOTIABLE', 'আলোচনা সাপেক্ষে', 'Negotiable');
+  negotiable('NEGOTIABLE', 'আলোচনা সাপেক্ষে', 'Negotiable'),
+  visitingCharge('VISITING_CHARGE', 'ভিজিট চার্জ', 'Visiting Charge');
 
   final String value;
   final String labelBn;
@@ -131,3 +132,4 @@ enum PriceType {
     );
   }
 }
+

@@ -337,6 +337,7 @@ def run_tests():
             description_bn="বাসার মূল সার্কিট ব্রেকার মেরামত ও ওয়্যারিং চেক করার জন্য জরুরি প্রয়োজন।",
             expires_at=future_time,
             upazila_id=1,
+            category_id=1,
             budget_min=Decimal('500'),
             budget_max=Decimal('1500'),
         )

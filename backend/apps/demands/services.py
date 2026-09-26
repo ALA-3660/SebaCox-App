@@ -179,6 +179,22 @@ class DemandService:
             'location_display_en', 'visibility', 'contact_preference',
         ]
 
+        # Handle cascading taxonomy resets
+        if 'category_id' in data and data['category_id'] != demand.category_id:
+            # If category changed and no new subcategory/service provided, clear old lower-level selections
+            if 'subcategory_id' not in data:
+                demand.subcategory = None
+                demand.subcategory_id = None
+            if 'service_id' not in data:
+                demand.service = None
+                demand.service_id = None
+
+        if 'subcategory_id' in data and data['subcategory_id'] != demand.subcategory_id:
+            # If subcategory changed and no new service provided, clear old service selection
+            if 'service_id' not in data:
+                demand.service = None
+                demand.service_id = None
+
         changed_fields = []
         for field in updatable_fields:
             if field in data:

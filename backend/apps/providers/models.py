@@ -304,12 +304,65 @@ class ProviderService(models.Model):
         blank=True,
         help_text="প্রাথমিক মূল্য বা রেট (ঐচ্ছিক)"
     )
+    max_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="সর্বোচ্চ মূল্য বা রেট সিলিং (ঐচ্ছিক)"
+    )
     price_type = models.CharField(
         max_length=30,
         choices=PriceType.choices,
         default=PriceType.STARTING_FROM,
         blank=True,
         help_text="মূল্যের ধরন"
+    )
+    unit_bn = models.CharField(
+        max_length=50,
+        blank=True,
+        default='',
+        help_text="মূল্য ইউনিট বাংলায় (যেমন: ঘণ্টা, বর্গফুট, পয়েন্ট)"
+    )
+    unit_en = models.CharField(
+        max_length=50,
+        blank=True,
+        default='',
+        help_text="Price unit in English"
+    )
+    experience_years = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="এই নির্দিষ্ট সেবায় অভিজ্ঞতার বছর (ঐচ্ছিক)"
+    )
+    is_emergency_available = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="২৪/৭ জরুরি ভিত্তিতে সেবা প্রদান সম্ভব কিনা"
+    )
+    emergency_fee = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="জরুরি সেবার অতিরিক্ত চার্জ (ঐচ্ছিক)"
+    )
+    warranty_text_bn = models.CharField(
+        max_length=150,
+        blank=True,
+        default='',
+        help_text="সেবা ওয়ারেন্টি বা গ্যারান্টি বিবরণ (যেমন: ৩০ দিনের ফ্রি সার্ভিসিং)"
+    )
+    warranty_text_en = models.CharField(
+        max_length=150,
+        blank=True,
+        default='',
+        help_text="Service warranty or guarantee note in English"
+    )
+    tags = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="সার্চ ও ম্যাচিং ট্যাগ কিওয়ার্ড তালিকা"
     )
     is_available = models.BooleanField(
         default=True,

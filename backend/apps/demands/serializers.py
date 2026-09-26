@@ -285,19 +285,49 @@ class DemandCreateSerializer(serializers.ModelSerializer):
         subcategory = attrs.get('subcategory')
         service = attrs.get('service')
 
-        if subcategory and category and subcategory.category_id != category.id:
-            raise serializers.ValidationError({
-                'subcategory': 'নির্বাচিত সাব-ক্যাটাগরি প্রধান ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।'
-            })
+        # Validate Active / Non-deprecated Taxonomy
+        if category:
+            if hasattr(category, 'status') and category.status not in ('ACTIVE', None):
+                raise serializers.ValidationError({
+                    'category': f"নির্বাচিত প্রধান ক্যাটাগরি '{category.name_bn}' বর্তমানে সক্রিয় নেই বা অপ্রচলিত।"
+                })
+            if hasattr(category, 'is_active') and not category.is_active:
+                raise serializers.ValidationError({
+                    'category': f"নির্বাচিত প্রধান ক্যাটাগরি '{category.name_bn}' বর্তমানে সক্রিয় নেই।"
+                })
+
+        if subcategory:
+            if hasattr(subcategory, 'status') and subcategory.status not in ('ACTIVE', None):
+                raise serializers.ValidationError({
+                    'subcategory': f"নির্বাচিত সাব-ক্যাটাগরি '{subcategory.name_bn}' বর্তমানে সক্রিয় নেই বা অপ্রচলিত।"
+                })
+            if hasattr(subcategory, 'is_active') and not subcategory.is_active:
+                raise serializers.ValidationError({
+                    'subcategory': f"নির্বাচিত সাব-ক্যাটাগরি '{subcategory.name_bn}' বর্তমানে সক্রিয় নেই।"
+                })
+
+            if category and subcategory.category_id != category.id:
+                raise serializers.ValidationError({
+                    'subcategory': f"নির্বাচিত সাব-ক্যাটাগরি '{subcategory.name_bn}' প্রধান ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।"
+                })
 
         if service:
+            if hasattr(service, 'status') and service.status not in ('ACTIVE', None):
+                raise serializers.ValidationError({
+                    'service': f"নির্বাচিত সেবাটি '{service.name_bn}' বর্তমানে সক্রিয় নেই বা অপ্রচলিত।"
+                })
+            if hasattr(service, 'is_active') and not service.is_active:
+                raise serializers.ValidationError({
+                    'service': f"নির্বাচিত সেবাটি '{service.name_bn}' বর্তমানে সক্রিয় নেই।"
+                })
+
             if category and service.category_id != category.id:
                 raise serializers.ValidationError({
-                    'service': 'নির্বাচিত সেবাটি প্রধান ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।'
+                    'service': f"নির্বাচিত সেবাটি '{service.name_bn}' প্রধান ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।"
                 })
             if subcategory and service.subcategory_id and service.subcategory_id != subcategory.id:
                 raise serializers.ValidationError({
-                    'service': 'নির্বাচিত সেবাটি সাব-ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।'
+                    'service': f"নির্বাচিত সেবাটি '{service.name_bn}' সাব-ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।"
                 })
 
         return attrs
@@ -347,19 +377,48 @@ class DemandUpdateSerializer(serializers.ModelSerializer):
         subcategory = attrs.get('subcategory') or getattr(self.instance, 'subcategory', None)
         service = attrs.get('service') or getattr(self.instance, 'service', None)
 
-        if subcategory and category and subcategory.category_id != category.id:
-            raise serializers.ValidationError({
-                'subcategory': 'নির্বাচিত সাব-ক্যাটাগরি প্রধান ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।'
-            })
+        if category:
+            if hasattr(category, 'status') and category.status not in ('ACTIVE', None):
+                raise serializers.ValidationError({
+                    'category': f"নির্বাচিত প্রধান ক্যাটাগরি '{category.name_bn}' বর্তমানে সক্রিয় নেই বা অপ্রচলিত।"
+                })
+            if hasattr(category, 'is_active') and not category.is_active:
+                raise serializers.ValidationError({
+                    'category': f"নির্বাচিত প্রধান ক্যাটাগরি '{category.name_bn}' বর্তমানে সক্রিয় নেই।"
+                })
+
+        if subcategory:
+            if hasattr(subcategory, 'status') and subcategory.status not in ('ACTIVE', None):
+                raise serializers.ValidationError({
+                    'subcategory': f"নির্বাচিত সাব-ক্যাটাগরি '{subcategory.name_bn}' বর্তমানে সক্রিয় নেই বা অপ্রচলিত।"
+                })
+            if hasattr(subcategory, 'is_active') and not subcategory.is_active:
+                raise serializers.ValidationError({
+                    'subcategory': f"নির্বাচিত সাব-ক্যাটাগরি '{subcategory.name_bn}' বর্তমানে সক্রিয় নেই।"
+                })
+
+            if category and subcategory.category_id != category.id:
+                raise serializers.ValidationError({
+                    'subcategory': f"নির্বাচিত সাব-ক্যাটাগরি '{subcategory.name_bn}' প্রধান ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।"
+                })
 
         if service:
+            if hasattr(service, 'status') and service.status not in ('ACTIVE', None):
+                raise serializers.ValidationError({
+                    'service': f"নির্বাচিত সেবাটি '{service.name_bn}' বর্তমানে সক্রিয় নেই বা অপ্রচলিত।"
+                })
+            if hasattr(service, 'is_active') and not service.is_active:
+                raise serializers.ValidationError({
+                    'service': f"নির্বাচিত সেবাটি '{service.name_bn}' বর্তমানে সক্রিয় নেই।"
+                })
+
             if category and service.category_id != category.id:
                 raise serializers.ValidationError({
-                    'service': 'নির্বাচিত সেবাটি প্রধান ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।'
+                    'service': f"নির্বাচিত সেবাটি '{service.name_bn}' প্রধান ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।"
                 })
             if subcategory and service.subcategory_id and service.subcategory_id != subcategory.id:
                 raise serializers.ValidationError({
-                    'service': 'নির্বাচিত সেবাটি সাব-ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।'
+                    'service': f"নির্বাচিত সেবাটি '{service.name_bn}' সাব-ক্যাটাগরির সাথে সামঞ্জস্যপূর্ণ নয়।"
                 })
 
         return attrs

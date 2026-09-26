@@ -288,22 +288,51 @@ class Demand(models.Model):
         validate_demand_quantity(self.quantity, self.unit)
 
         # Master Taxonomy Integrity Enforcement
-        # 1. Reconcile SubCategory and Category
+        # 1. Validate Category status
+        if self.category:
+            if hasattr(self.category, 'status') and self.category.status not in ('ACTIVE', None):
+                raise ValidationError({
+                    'category': f"নির্বাচিত প্রধান ক্যাটাগরি '{self.category.name_bn}' বর্তমানে সক্রিয় নেই বা অপ্রচলিত ({self.category.status})।"
+                })
+            if hasattr(self.category, 'is_active') and not self.category.is_active:
+                raise ValidationError({
+                    'category': f"নির্বাচিত প্রধান ক্যাটাগরি '{self.category.name_bn}' বর্তমানে সক্রিয় নেই।"
+                })
+
+        # 2. Reconcile SubCategory and Category
         if self.subcategory:
+            if hasattr(self.subcategory, 'status') and self.subcategory.status not in ('ACTIVE', None):
+                raise ValidationError({
+                    'subcategory': f"নির্বাচিত সাব-ক্যাটাগরি '{self.subcategory.name_bn}' বর্তমানে সক্রিয় নেই বা অপ্রচলিত ({self.subcategory.status})।"
+                })
+            if hasattr(self.subcategory, 'is_active') and not self.subcategory.is_active:
+                raise ValidationError({
+                    'subcategory': f"নির্বাচিত সাব-ক্যাটাগরি '{self.subcategory.name_bn}' বর্তমানে সক্রিয় নেই।"
+                })
+
             if not self.category:
                 self.category = self.subcategory.category
             elif self.subcategory.category_id != self.category_id:
                 raise ValidationError({
-                    'subcategory': 'নির্বাচিত সাব-ক্যাটাগরিটি এই প্রধান ক্যাটাগরির অন্তর্ভুক্ত নয়।'
+                    'subcategory': f"নির্বাচিত সাব-ক্যাটাগরি '{self.subcategory.name_bn}' এই প্রধান ক্যাটাগরির অন্তর্ভুক্ত নয়।"
                 })
 
-        # 2. Reconcile Service with Category & SubCategory
+        # 3. Reconcile Service with Category & SubCategory
         if self.service:
+            if hasattr(self.service, 'status') and self.service.status not in ('ACTIVE', None):
+                raise ValidationError({
+                    'service': f"নির্বাচিত সেবাটি '{self.service.name_bn}' বর্তমানে সক্রিয় নেই বা অপ্রচলিত ({self.service.status})।"
+                })
+            if hasattr(self.service, 'is_active') and not self.service.is_active:
+                raise ValidationError({
+                    'service': f"নির্বাচিত সেবাটি '{self.service.name_bn}' বর্তমানে সক্রিয় নেই।"
+                })
+
             if not self.category:
                 self.category = self.service.category
             elif self.service.category_id != self.category_id:
                 raise ValidationError({
-                    'service': 'নির্বাচিত সেবাটি এই প্রধান ক্যাটাগরির অন্তর্ভুক্ত নয়।'
+                    'service': f"নির্বাচিত সেবাটি '{self.service.name_bn}' এই প্রধান ক্যাটাগরির অন্তর্ভুক্ত নয়।"
                 })
 
             if self.service.subcategory:
@@ -311,7 +340,7 @@ class Demand(models.Model):
                     self.subcategory = self.service.subcategory
                 elif self.service.subcategory_id != self.subcategory_id:
                     raise ValidationError({
-                        'service': 'নির্বাচিত সেবাটি এই সাব-ক্যাটাগরির অন্তর্ভুক্ত নয়।'
+                        'service': f"নির্বাচিত সেবাটি '{self.service.name_bn}' এই সাব-ক্যাটাগরির অন্তর্ভুক্ত নয়।"
                     })
 
     def is_expired(self, current_time=None) -> bool:

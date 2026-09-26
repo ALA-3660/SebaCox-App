@@ -171,7 +171,9 @@ class ServiceMatchRule:
             getattr(demand.subcategory, 'category_id', None) if getattr(demand, 'subcategory', None) else None
         )
 
-        p_service_id = getattr(provider_service, 'service_id', None)
+        p_service_id = getattr(provider_service, 'service_id', None) or (
+            getattr(provider_service.service, 'id', None) if getattr(provider_service, 'service', None) else None
+        )
         p_subcategory_id = getattr(provider_service, 'subcategory_id', None) or (
             getattr(provider_service.service, 'subcategory_id', None) if getattr(provider_service, 'service', None) else None
         )

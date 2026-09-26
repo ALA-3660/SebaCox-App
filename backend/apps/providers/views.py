@@ -216,7 +216,18 @@ class ProviderServiceListCreateView(APIView):
                 description_bn=request.data.get('description_bn', ''),
                 description_en=request.data.get('description_en', ''),
                 starting_price=request.data.get('starting_price'),
+                max_price=request.data.get('max_price'),
                 price_type=request.data.get('price_type', 'STARTING_FROM'),
+                unit_bn=request.data.get('unit_bn', ''),
+                unit_en=request.data.get('unit_en', ''),
+                experience_years=request.data.get('experience_years'),
+                is_emergency_available=bool(request.data.get('is_emergency_available', False)),
+                emergency_fee=request.data.get('emergency_fee'),
+                warranty_text_bn=request.data.get('warranty_text_bn', ''),
+                warranty_text_en=request.data.get('warranty_text_en', ''),
+                skills=request.data.get('skills', []),
+                custom_specialty=request.data.get('custom_specialty', ''),
+                tags=request.data.get('tags', []),
                 actor=request.user
             )
             serializer = ProviderServiceSerializer(ps)

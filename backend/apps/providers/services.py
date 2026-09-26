@@ -158,11 +158,22 @@ class ProviderDomainService:
         description_bn: str = '',
         description_en: str = '',
         starting_price: Optional[float] = None,
+        max_price: Optional[float] = None,
         price_type: str = 'STARTING_FROM',
+        unit_bn: str = '',
+        unit_en: str = '',
+        experience_years: Optional[int] = None,
+        is_emergency_available: bool = False,
+        emergency_fee: Optional[float] = None,
+        warranty_text_bn: str = '',
+        warranty_text_en: str = '',
+        skills: Optional[list] = None,
+        custom_specialty: str = '',
+        tags: Optional[list] = None,
         actor=None,
     ) -> ProviderService:
         """
-        Maps a service to provider. Enforces uniqueness.
+        Maps a service to provider with advanced configuration options. Enforces uniqueness.
         """
         if ProviderService.objects.filter(provider=provider, service_id=service_id).exists():
             raise ValidationError("এই সেবাটি ইতিমধ্যে এই সেবাদাতার তালিকায় যুক্ত রয়েছে।")
@@ -175,7 +186,18 @@ class ProviderDomainService:
             description_bn=description_bn,
             description_en=description_en,
             starting_price=starting_price,
+            max_price=max_price,
             price_type=price_type,
+            unit_bn=unit_bn,
+            unit_en=unit_en,
+            experience_years=experience_years,
+            is_emergency_available=is_emergency_available,
+            emergency_fee=emergency_fee,
+            warranty_text_bn=warranty_text_bn,
+            warranty_text_en=warranty_text_en,
+            skills=skills or [],
+            custom_specialty=custom_specialty,
+            tags=tags or [],
             is_available=True,
             is_active=True
         )

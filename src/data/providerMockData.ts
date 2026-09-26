@@ -10,8 +10,18 @@ export interface MockProviderService {
   name_bn: string;
   name_en: string;
   category_name_bn: string;
-  pricing_model: 'FIXED' | 'HOURLY' | 'NEGOTIABLE';
+  sub_category_name_bn?: string;
+  custom_title_bn?: string;
+  description_bn?: string;
+  pricing_model: 'FIXED' | 'HOURLY' | 'DAILY' | 'PER_UNIT' | 'STARTING_FROM' | 'NEGOTIABLE' | 'VISITING_CHARGE';
   base_price: number;
+  max_price?: number;
+  rate_unit_bn?: string;
+  experience_years?: number;
+  is_emergency_available?: boolean;
+  emergency_fee?: number;
+  warranty_text_bn?: string;
+  skills?: string[];
   is_active: boolean;
 }
 

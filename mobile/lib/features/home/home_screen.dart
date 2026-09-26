@@ -470,7 +470,7 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add, color: Colors.white),
         label: Text(
-          'আমার পোস্ট',
+          '+আমার প্রয়োজন',
           style: AppTypography.mediumHeading3.copyWith(
             color: Colors.white,
             fontWeight: FontWeight.bold,

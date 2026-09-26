@@ -9,8 +9,15 @@ import unicodedata
 from typing import List, Dict, Any, Optional
 from django.db.models import Q, Count
 
-from .models import Category, SubCategory, Service, TaxonomyAlias
-from .constants import CategoryKind, ServiceType, SEBACOX_31_MASTER_CATEGORIES, INITIAL_TAXONOMY_ALIASES, AliasTargetType
+from .models import Category, SubCategory, Service, TaxonomyAlias, TaxonomyVersion
+from .constants import (
+    CategoryKind,
+    ServiceType,
+    SEBACOX_31_MASTER_CATEGORIES,
+    INITIAL_TAXONOMY_ALIASES,
+    AliasTargetType,
+    TaxonomyStatus,
+)
 
 
 def normalize_search_text(text: str) -> str:
@@ -494,6 +501,7 @@ class TaxonomySeedService:
                     'description_en': cat_data.get('description_en', ''),
                     'sort_order': cat_data['order'],
                     'kind': cat_data.get('kind', CategoryKind.PUBLIC_SERVICE_CATEGORY),
+                    'status': TaxonomyStatus.ACTIVE,
                     'is_active': True,
                     'is_featured': cat_data.get('is_featured', False),
                     'is_popular': cat_data.get('is_popular', False),
@@ -514,6 +522,7 @@ class TaxonomySeedService:
                         'name_bn': sub_data['name_bn'],
                         'name_en': sub_data['name_en'],
                         'sort_order': sub_data.get('order', 0),
+                        'status': TaxonomyStatus.ACTIVE,
                         'is_active': True,
                         'is_popular': sub_data.get('is_popular', False),
                     }
@@ -525,7 +534,8 @@ class TaxonomySeedService:
 
         # Non-destructively deactivate categories not in 31 Master list
         Category.objects.exclude(slug__in=valid_slugs).filter(level=0, kind=CategoryKind.PUBLIC_SERVICE_CATEGORY).update(
-            is_active=False
+            is_active=False,
+            status=TaxonomyStatus.INACTIVE
         )
 
         # Seed Aliases
@@ -544,6 +554,25 @@ class TaxonomySeedService:
                 }
             )
             alias_count += 1
+
+        # Ensure TaxonomyVersion v1.0 is initialized
+        active_cats = Category.objects.filter(is_active=True, level=0).count()
+        active_subs = SubCategory.objects.filter(is_active=True).count()
+        active_aliases = TaxonomyAlias.objects.filter(is_active=True).count()
+
+        TaxonomyVersion.objects.get_or_create(
+            version_number='1.0',
+            defaults={
+                'release_title': 'SebaCox Master Taxonomy v1.0',
+                'description': '31 Master Categories and granular sub-categories for Cox\'s Bazar marketplace.',
+                'changelog': ['Initial Canonical Release', 'Provider & Demand Alignment'],
+                'is_current': True,
+                'total_categories_count': active_cats,
+                'total_subcategories_count': active_subs,
+                'total_aliases_count': active_aliases,
+                'checksum': 'sebax-tax-v1.0-master-canonical'
+            }
+        )
 
         return {
             'categories_created': cat_created,

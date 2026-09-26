@@ -956,6 +956,8 @@ interface ProviderDashboardViewProps {
   provider: MockProvider;
   onBack: () => void;
   onUpdateAvailability: (newStatus: 'ONLINE' | 'OFFLINE' | 'BUSY' | 'ON_BREAK') => void;
+  onAddService?: (newService: MockProviderService) => void;
+  onRemoveService?: (serviceId: number) => void;
   showTypoTag: (font: 'hind' | 'baloo' | 'tiro', role: string) => React.ReactNode;
 }
 
@@ -963,8 +965,72 @@ export const ProviderDashboardView: React.FC<ProviderDashboardViewProps> = ({
   provider,
   onBack,
   onUpdateAvailability,
+  onAddService,
+  onRemoveService,
   showTypoTag
 }) => {
+  const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState(false);
+  const [selectedCatId, setSelectedCatId] = useState<number>(SEBACOX_MASTER_CATEGORIES[0]?.id || 1);
+  const [selectedSubcatId, setSelectedSubcatId] = useState<number | null>(null);
+  const [customTitleBn, setCustomTitleBn] = useState('');
+  const [customDescBn, setCustomDescBn] = useState('');
+  const [pricingModel, setPricingModel] = useState<'FIXED' | 'HOURLY' | 'DAILY' | 'PER_UNIT' | 'STARTING_FROM' | 'NEGOTIABLE' | 'VISITING_CHARGE'>('STARTING_FROM');
+  const [basePrice, setBasePrice] = useState<number>(500);
+  const [maxPrice, setMaxPrice] = useState<number | undefined>(undefined);
+  const [rateUnit, setRateUnit] = useState('প্রতি ইউনিট');
+  const [isEmergency, setIsEmergency] = useState(false);
+  const [emergencyFee, setEmergencyFee] = useState<number>(300);
+  const [warrantyText, setWarrantyText] = useState('৩০ দিনের সার্ভিসিং ওয়ারেন্টি');
+  const [skillsList, setSkillsList] = useState<string[]>(['জরুরি সার্ভিস', 'দক্ষ টেকনিশিয়ান']);
+  const [skillInput, setSkillInput] = useState('');
+
+  const currentCategory = useMemo(() => {
+    return SEBACOX_MASTER_CATEGORIES.find(c => c.id === selectedCatId) || SEBACOX_MASTER_CATEGORIES[0];
+  }, [selectedCatId]);
+
+  const availableSubcategories = useMemo(() => {
+    return currentCategory?.subCategories || [];
+  }, [currentCategory]);
+
+  const handleAddSkill = () => {
+    if (skillInput.trim() && !skillsList.includes(skillInput.trim())) {
+      setSkillsList([...skillsList, skillInput.trim()]);
+      setSkillInput('');
+    }
+  };
+
+  const handleSaveService = () => {
+    const subcat = availableSubcategories.find(s => s.id === selectedSubcatId) || availableSubcategories[0];
+    const newService: MockProviderService = {
+      id: Date.now(),
+      name_bn: subcat ? subcat.nameBn : currentCategory.nameBn,
+      name_en: subcat ? subcat.nameEn : currentCategory.nameEn,
+      category_name_bn: currentCategory.nameBn,
+      sub_category_name_bn: subcat?.nameBn,
+      custom_title_bn: customTitleBn.trim() || undefined,
+      description_bn: customDescBn.trim() || undefined,
+      pricing_model: pricingModel,
+      base_price: basePrice,
+      max_price: maxPrice,
+      rate_unit_bn: rateUnit,
+      is_emergency_available: isEmergency,
+      emergency_fee: isEmergency ? emergencyFee : undefined,
+      warranty_text_bn: warrantyText.trim() || undefined,
+      skills: skillsList,
+      is_active: true
+    };
+
+    if (onAddService) {
+      onAddService(newService);
+    } else {
+      provider.services.push(newService);
+    }
+
+    setIsAddServiceModalOpen(false);
+    setCustomTitleBn('');
+    setCustomDescBn('');
+  };
+
   return (
     <div className="flex flex-col gap-3 font-tiro py-1">
       {/* Top Header */}
@@ -1082,30 +1148,97 @@ export const ProviderDashboardView: React.FC<ProviderDashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Managed Service Offerings */}
-      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs space-y-2">
+      {/* Managed Service Offerings Header & Action */}
+      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs space-y-2.5">
         <div className="flex justify-between items-center">
-          <span className="text-xs font-bold text-slate-800 font-baloo">আমার সেবাসমূহ</span>
-          {showTypoTag('baloo', 'Card Heading')}
+          <div>
+            <span className="text-xs font-bold text-slate-900 font-baloo">আমার সেবাসমূহ ({provider.services.length})</span>
+            <span className="block text-[10px] text-slate-500 font-tiro">মাস্টার ট্যাক্সোনমি ও উন্নত কনফিগারেশন</span>
+          </div>
+          <button
+            onClick={() => setIsAddServiceModalOpen(true)}
+            className="flex items-center gap-1 px-2.5 py-1 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-[11px] font-bold font-baloo transition cursor-pointer shadow-xs"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>নতুন সেবা</span>
+          </button>
         </div>
 
-        <div className="space-y-1.5">
+        {/* List of Configured Services */}
+        <div className="space-y-2">
           {provider.services.map((srv) => (
             <div
               key={srv.id}
-              className="p-2 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between text-xs"
+              className="p-3 rounded-xl bg-slate-50/80 border border-slate-200 space-y-2 text-xs"
             >
-              <div>
-                <div className="font-bold text-slate-800 text-[11px] font-baloo">
-                  {srv.name_bn}
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="font-bold text-slate-900 text-xs font-baloo flex items-center gap-1.5">
+                    <span>{srv.custom_title_bn || srv.name_bn}</span>
+                    {srv.is_emergency_available && (
+                      <span className="text-[9px] font-bold bg-rose-100 text-rose-800 border border-rose-200 px-1.5 py-0.5 rounded font-tiro">
+                        🚨 জরুরি সেবা
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-tiro">
+                    ক্যাটাগরি: {srv.category_name_bn} {srv.sub_category_name_bn && `> ${srv.sub_category_name_bn}`}
+                  </div>
                 </div>
-                <div className="text-[10px] text-slate-500 font-mono">
-                  বেস রেট: ৳{srv.base_price} ({srv.pricing_model})
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded font-mono">
+                    {srv.is_active ? 'ACTIVE' : 'PAUSED'}
+                  </span>
+                  <button
+                    onClick={() => {
+                      if (onRemoveService) {
+                        onRemoveService(srv.id);
+                      } else {
+                        const idx = provider.services.findIndex(s => s.id === srv.id);
+                        if (idx !== -1) provider.services.splice(idx, 1);
+                      }
+                    }}
+                    className="p-1 text-slate-400 hover:text-rose-600 rounded cursor-pointer"
+                    title="সেবা মুছে ফেলুন"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
-              <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded font-mono">
-                ACTIVE
-              </span>
+
+              {srv.description_bn && (
+                <p className="text-[11px] text-slate-600 font-tiro line-clamp-2">
+                  {srv.description_bn}
+                </p>
+              )}
+
+              {/* Price & Guarantee Badges */}
+              <div className="flex flex-wrap gap-1.5 items-center">
+                <span className="text-[10px] font-bold font-mono px-2 py-0.5 bg-teal-50 text-teal-800 border border-teal-200 rounded-md">
+                  ৳{srv.base_price} {srv.rate_unit_bn ? `/${srv.rate_unit_bn}` : ''} ({srv.pricing_model})
+                </span>
+
+                {srv.warranty_text_bn && (
+                  <span className="text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-md font-tiro">
+                    🛡️ {srv.warranty_text_bn}
+                  </span>
+                )}
+              </div>
+
+              {/* Skills Tags */}
+              {srv.skills && srv.skills.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-0.5">
+                  {srv.skills.map((skill, sIdx) => (
+                    <span
+                      key={sIdx}
+                      className="text-[9px] bg-white text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded font-tiro"
+                    >
+                      #{skill}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -1134,11 +1267,235 @@ export const ProviderDashboardView: React.FC<ProviderDashboardViewProps> = ({
       <div className="p-2.5 bg-slate-100 rounded-xl text-[10px] text-slate-600 font-tiro space-y-1">
         <div className="font-bold text-slate-700 font-mono">📋 ProviderAuditTrail</div>
         <div>• Availability changed to {provider.availability_status}</div>
-        <div>• Profile status verified and active in Cox's Bazar region</div>
+        <div>• Total {provider.services.length} services configured under SebaCox Master Taxonomy</div>
       </div>
+
+      {/* Add New Service Modal (Phase 4F Advanced Configuration) */}
+      {isAddServiceModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3 animate-in fade-in">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col font-tiro">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-3.5 border-b border-slate-200 bg-teal-800 text-white rounded-t-2xl">
+              <div className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                <h3 className="text-xs font-bold font-hind">নতুন সেবা নির্বাচন ও অ্যাডভান্সড কনফিগারেশন</h3>
+              </div>
+              <button
+                onClick={() => setIsAddServiceModalOpen(false)}
+                className="p-1 hover:bg-teal-700 rounded-full cursor-pointer text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 overflow-y-auto space-y-3 text-xs flex-1">
+              {/* Category Cascading Picker */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-800 mb-1 font-tiro">
+                  ১. মূল ক্যাটাগরি নির্বাচন *
+                </label>
+                <select
+                  value={selectedCatId}
+                  onChange={(e) => {
+                    const cid = Number(e.target.value);
+                    setSelectedCatId(cid);
+                    setSelectedSubcatId(null);
+                  }}
+                  className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-baloo cursor-pointer"
+                >
+                  {SEBACOX_MASTER_CATEGORIES.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.nameBn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Sub-category Selector */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-800 mb-1 font-tiro">
+                  ২. সাব-ক্যাটাগরি / ট্রেড *
+                </label>
+                <select
+                  value={selectedSubcatId || ''}
+                  onChange={(e) => setSelectedSubcatId(Number(e.target.value))}
+                  className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-baloo cursor-pointer"
+                >
+                  <option value="">-- সাব-ক্যাটাগরি বেছে নিন --</option>
+                  {availableSubcategories.map((sc) => (
+                    <option key={sc.id} value={sc.id}>
+                      {sc.nameBn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Custom Title */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-800 mb-1 font-tiro">
+                  ৩. কাস্টম সেবার শিরোনাম (ঐচ্ছিক)
+                </label>
+                <input
+                  type="text"
+                  value={customTitleBn}
+                  onChange={(e) => setCustomTitleBn(e.target.value)}
+                  placeholder="যেমন: ইনভার্টার এসি গ্যাস চার্জ ও লিকেজ মেরামত"
+                  className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-tiro"
+                />
+              </div>
+
+              {/* Pricing Model & Base Price */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-800 mb-1 font-tiro">
+                    প্রাইসিং মডেল
+                  </label>
+                  <select
+                    value={pricingModel}
+                    onChange={(e) => setPricingModel(e.target.value as any)}
+                    className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-baloo cursor-pointer"
+                  >
+                    <option value="STARTING_FROM">শুরু থেকে (Starting From)</option>
+                    <option value="FIXED">নির্দিষ্ট মূল্য (Fixed)</option>
+                    <option value="HOURLY">প্রতি ঘণ্টা (Hourly)</option>
+                    <option value="DAILY">প্রতি দিন (Daily)</option>
+                    <option value="PER_UNIT">প্রতি একক (Per Unit)</option>
+                    <option value="NEGOTIABLE">আলোচনা সাপেক্ষে (Negotiable)</option>
+                    <option value="VISITING_CHARGE">ভিজিট ফি (Visiting Charge)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-800 mb-1 font-tiro">
+                    রেট / মূল্য (৳) *
+                  </label>
+                  <input
+                    type="number"
+                    value={basePrice}
+                    onChange={(e) => setBasePrice(Number(e.target.value))}
+                    className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Rate Unit */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-800 mb-1 font-tiro">
+                  মূল্য একক (Rate Unit)
+                </label>
+                <input
+                  type="text"
+                  value={rateUnit}
+                  onChange={(e) => setRateUnit(e.target.value)}
+                  placeholder="যেমন: প্রতি ঘণ্টা / প্রতি ইউনিট / প্রতি স্কয়ার ফুট"
+                  className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-tiro"
+                />
+              </div>
+
+              {/* Emergency 24/7 Service Switch */}
+              <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-rose-900 font-baloo">২৪/৭ জরুরি ভিত্তিতে সেবা প্রদান</span>
+                  <input
+                    type="checkbox"
+                    checked={isEmergency}
+                    onChange={(e) => setIsEmergency(e.target.checked)}
+                    className="w-4 h-4 text-rose-600 rounded cursor-pointer"
+                  />
+                </div>
+                {isEmergency && (
+                  <div>
+                    <label className="block text-[10px] font-bold text-rose-800 mb-0.5 font-tiro">
+                      জরুরি সেবার অতিরিক্ত চার্জ (৳)
+                    </label>
+                    <input
+                      type="number"
+                      value={emergencyFee}
+                      onChange={(e) => setEmergencyFee(Number(e.target.value))}
+                      className="w-full bg-white border border-rose-300 rounded-lg p-1.5 text-xs font-mono"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Warranty / Guarantee Note */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-800 mb-1 font-tiro">
+                  কাজের ওয়ারেন্টি বা গ্যারান্টি (ঐচ্ছিক)
+                </label>
+                <input
+                  type="text"
+                  value={warrantyText}
+                  onChange={(e) => setWarrantyText(e.target.value)}
+                  placeholder="যেমন: ৩০ দিনের সার্ভিস ওয়ারেন্টি"
+                  className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-tiro"
+                />
+              </div>
+
+              {/* Skills Tags */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-800 mb-1 font-tiro">
+                  দক্ষতা ও কিওয়ার্ড ট্যাগ
+                </label>
+                <div className="flex gap-1.5 mb-1.5">
+                  <input
+                    type="text"
+                    value={skillInput}
+                    onChange={(e) => setSkillInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSkill(); }}}
+                    placeholder="ট্যাগ লিখুন (যেমন: গ্যাস চার্জ)..."
+                    className="flex-1 bg-white border border-slate-300 rounded-lg p-1.5 text-xs font-tiro"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddSkill}
+                    className="px-2.5 py-1.5 bg-teal-700 text-white rounded-lg text-xs font-baloo cursor-pointer font-bold"
+                  >
+                    যোগ
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {skillsList.map((skill, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1 text-[10px] bg-teal-50 text-teal-800 border border-teal-200 px-2 py-0.5 rounded-full font-tiro"
+                    >
+                      {skill}
+                      <button
+                        type="button"
+                        onClick={() => setSkillsList(skillsList.filter((_, i) => i !== idx))}
+                        className="hover:text-rose-600 cursor-pointer"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 border-t border-slate-200 bg-slate-50 rounded-b-2xl flex justify-end gap-2">
+              <button
+                onClick={() => setIsAddServiceModalOpen(false)}
+                className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-xl text-xs font-baloo font-bold hover:bg-slate-100 cursor-pointer"
+              >
+                বাতিল
+              </button>
+              <button
+                onClick={handleSaveService}
+                className="px-4 py-1.5 bg-teal-700 text-white rounded-xl text-xs font-baloo font-bold hover:bg-teal-800 cursor-pointer shadow-xs"
+              >
+                সেবা যুক্ত করুন
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
 
 // -----------------------------------------------------------------------------
 // 4. POST BOTTOM SHEET MODAL
@@ -1232,17 +1589,18 @@ export const ProviderArchitectureInspector: React.FC<ProviderArchitectureInspect
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-teal-700" />
           <h3 className="text-xs font-bold text-slate-900 font-hind">
-            Phase 5 Provider & Service Engine Inspector
+            Phase 4F & Phase 5 Provider Engine Inspector
           </h3>
         </div>
         <span className="text-[10px] font-mono bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">
-          55 / 55 Passing
+          68 / 68 Passing
         </span>
       </div>
 
       <p className="text-xs text-slate-600 font-tiro leading-relaxed">
-        Phase 5 enforces the strict architectural separation of <strong>User ≠ Provider ≠ Service</strong>, 
-        audit-trailed state transitions, and multi-area coverage.
+        Phase 4F & Phase 5 enforce <strong>User ≠ Provider ≠ Service</strong>, 
+        cascading taxonomy service selection, advanced pricing models (Fixed, Hourly, Daily, Unit, Visiting Charge), 
+        emergency 24/7 service metadata, and warranty guarantees.
       </p>
 
       <div className="space-y-2 text-xs">
@@ -1256,6 +1614,10 @@ export const ProviderArchitectureInspector: React.FC<ProviderArchitectureInspect
             <span className="font-bold text-teal-800">{provider.status}</span>
           </div>
           <div className="flex justify-between text-[10px] font-mono text-slate-600">
+            <span>Configured Services:</span>
+            <span className="font-bold text-teal-800">{provider.services.length} Services (Custom Config)</span>
+          </div>
+          <div className="flex justify-between text-[10px] font-mono text-slate-600">
             <span>Availability Status:</span>
             <span className="font-bold text-emerald-700">{provider.availability_status}</span>
           </div>
@@ -1266,7 +1628,7 @@ export const ProviderArchitectureInspector: React.FC<ProviderArchitectureInspect
         </div>
 
         <div className="p-2 rounded-lg bg-teal-50/70 border border-teal-200 text-[10px] text-teal-900 font-tiro">
-          💡 <strong>Single Source of Truth:</strong> Services belong to the Master Taxonomy (Phase 4), and ProviderService maps the provider's specific pricing without duplicating service logic.
+          💡 <strong>Master Taxonomy Single Source of Truth:</strong> All services are strictly linked to Phase 4 categories/sub-categories with advanced customized pricing (Visiting Charge, Emergency Fee, Warranty & Skills tags).
         </div>
       </div>
     </div>

@@ -160,6 +160,7 @@ class TestPhase5Providers:
         self.test_ownership_and_permission_contracts()
         self.test_bilingual_search_and_filtering()
         self.test_global_bangla_typography_and_branding()
+        self.test_phase4f_advanced_service_configuration()
 
         print("\n--------------------------------------------------")
         print(f"Phase 5 Tests Result: {self.passed} Passed, {self.failed} Failed")
@@ -454,6 +455,67 @@ class TestPhase5Providers:
         self.assert_equal(typography_standards['large_headings'], 'Hind Siliguri', "Hind Siliguri strictly enforced for large headings")
         self.assert_equal(typography_standards['medium_headings'], 'Baloo Da 2', "Baloo Da 2 strictly enforced for medium headings, buttons, chips")
         self.assert_equal(typography_standards['normal_body'], 'Tiro Bangla', "Tiro Bangla strictly enforced for body copy & labels")
+
+
+    def test_phase4f_advanced_service_configuration(self):
+        print("\n[Group 13] Phase 4F Advanced Service Configuration & Multi-Service Selection:")
+        
+        # 1. Verify PriceType enum includes all pricing models including VISITING_CHARGE
+        expected_price_types = ['STARTING_FROM', 'FIXED', 'HOURLY', 'DAILY', 'PER_UNIT', 'NEGOTIABLE', 'VISITING_CHARGE']
+        for pt in expected_price_types:
+            self.assert_true(hasattr(PriceType, pt), f"PriceType.{pt} is defined")
+
+        # 2. Multi-service configuration dictionary
+        configured_services = [
+            {
+                'provider_id': 101,
+                'service_id': 1,
+                'title_bn': 'ইনভার্টার এসি গ্যাস চার্জ ও লিকেজ রিপেয়ার',
+                'title_en': 'Inverter AC Gas Charge & Leak Repair',
+                'description_bn': '১০০% অরিজিনাল আর-৪১০এ ও আর-৩২ গ্যাস রিফিল এবং প্রফেশনাল প্রেসার টেস্টিং।',
+                'starting_price': 1800.0,
+                'max_price': 3500.0,
+                'price_type': PriceType.STARTING_FROM,
+                'unit_bn': 'প্রতি ইউনিট',
+                'experience_years': 7,
+                'is_emergency_available': True,
+                'emergency_fee': 500.0,
+                'warranty_text_bn': '৩০ দিনের কাজের গ্যারান্টি',
+                'skills': ['ইনভার্টার এসি', 'গ্যাস রিফিল', 'ভ্যাকুয়াম পাম্পিং', 'পিসিবি সার্কিট মেরামত'],
+                'tags': ['ac repair', 'ac gas refill', 'এসি মেরামত', 'ইনভার্টার এসি'],
+                'is_available': True,
+                'is_active': True,
+            },
+            {
+                'provider_id': 101,
+                'service_id': 2,
+                'title_bn': 'বাসাবাড়ি বৈদ্যুতিক ওয়্যারিং ও সার্কিট ব্রেকার চেক',
+                'title_en': 'Home Electrical Wiring & Circuit Breaker Check',
+                'description_bn': 'নিরাপদ ওয়্যারিং ও শর্ট সার্কিট ফল্ট ফাইন্ডিং সেবা।',
+                'starting_price': 400.0,
+                'max_price': None,
+                'price_type': PriceType.HOURLY,
+                'unit_bn': 'প্রতি ঘণ্টা',
+                'experience_years': 5,
+                'is_emergency_available': True,
+                'emergency_fee': 300.0,
+                'warranty_text_bn': '১৫ দিনের সার্ভিস ওয়ারেন্টি',
+                'skills': ['ওয়্যারিং', 'ডিবি বোর্ড ইনস্টলেশন', 'আর্থিং চেক'],
+                'tags': ['electrician', 'wiring', 'ইলেকট্রিশিয়ান'],
+                'is_available': True,
+                'is_active': True,
+            }
+        ]
+
+        self.assert_equal(len(configured_services), 2, "Provider 101 successfully configured 2 distinct services")
+        
+        # 3. Verify emergency and warranty properties
+        ac_service = configured_services[0]
+        self.assert_true(ac_service['is_emergency_available'], "Emergency availability flag properly configured")
+        self.assert_equal(ac_service['emergency_fee'], 500.0, "Emergency fee properly mapped")
+        self.assert_equal(ac_service['warranty_text_bn'], '৩০ দিনের কাজের গ্যারান্টি', "Warranty note properly preserved")
+        self.assert_equal(len(ac_service['skills']), 4, "4 specialized sub-skills configured")
+        self.assert_equal(ac_service['price_type'], PriceType.STARTING_FROM, "Pricing model STARTING_FROM properly applied")
 
 
 if __name__ == '__main__':

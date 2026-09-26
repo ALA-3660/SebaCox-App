@@ -1,22 +1,31 @@
 /// Searchable Cascading Category & Sub-Category Modal Picker for Flutter.
-/// Phase 4C.8 — Master Taxonomy Version 1.0
-/// Global Bangla Typography Standard compliant.
-/// "মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+/// Phase 4E — Intent-Guided Taxonomy Discovery & Search Alias UX.
+/// Global Bangla Typography Standard compliant:
+/// - Hind Siliguri: Large Headings / Modal Titles
+/// - Baloo Da 2: Sub-headings, Tabs, Badges & Interactive Chips
+/// - Tiro Bangla: Body Text, Helper Text & Labels
+/// "প্রয়োজন থেকে সমাধান- এক অ্যাপেই"
+/// "খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই"
 library;
 
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../models/category_model.dart';
+import '../models/user_intent.dart';
 import '../repositories/category_repository.dart';
 
 class CategorySelectionResult {
   final CategoryItem category;
   final SubCategoryItem subcategory;
+  final UserIntent? intent;
+  final String? matchedAlias;
 
   const CategorySelectionResult({
     required this.category,
     required this.subcategory,
+    this.intent,
+    this.matchedAlias,
   });
 }
 
@@ -24,6 +33,7 @@ class CategoryCascadingPicker extends StatefulWidget {
   final CategoryRepository repository;
   final int? initialCategoryId;
   final int? initialSubcategoryId;
+  final String? initialIntentCode;
   final String title;
 
   const CategoryCascadingPicker({
@@ -31,6 +41,7 @@ class CategoryCascadingPicker extends StatefulWidget {
     required this.repository,
     this.initialCategoryId,
     this.initialSubcategoryId,
+    this.initialIntentCode,
     this.title = 'ক্যাটাগরি ও সেবা নির্বাচন করুন',
   });
 
@@ -40,6 +51,7 @@ class CategoryCascadingPicker extends StatefulWidget {
     required CategoryRepository repository,
     int? initialCategoryId,
     int? initialSubcategoryId,
+    String? initialIntentCode,
     String title = 'ক্যাটাগরি ও সেবা নির্বাচন করুন',
   }) {
     return showModalBottomSheet<CategorySelectionResult>(
@@ -47,11 +59,12 @@ class CategoryCascadingPicker extends StatefulWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => FractionallySizedBox(
-        heightFactor: 0.90,
+        heightFactor: 0.92,
         child: CategoryCascadingPicker(
           repository: repository,
           initialCategoryId: initialCategoryId,
           initialSubcategoryId: initialSubcategoryId,
+          initialIntentCode: initialIntentCode,
           title: title,
         ),
       ),
@@ -66,6 +79,9 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
   // Navigation / Step: 0 = Categories, 1 = Subcategories
   int _currentStep = 0;
 
+  // Intent Selection
+  UserIntent? _selectedIntent;
+
   // Data lists
   List<CategoryItem> _allCategories = [];
   List<CategoryItem> _filteredCategories = [];
@@ -77,6 +93,7 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
   // Selected State
   CategoryItem? _selectedCategory;
   SubCategoryItem? _selectedSubcategory;
+  String? _lastMatchedAlias;
 
   // Search Controllers
   final TextEditingController _categorySearchController = TextEditingController();
@@ -88,9 +105,26 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
   String? _categoryError;
   String? _subcategoryError;
 
+  // Quick Prompt Recommendations for Cox's Bazar
+  static const List<String> _popularCoxKeywords = [
+    'রাজমিস্ত্রি',
+    'ইলেকট্রিশিয়ান',
+    'ফ্রিজ নষ্ট',
+    'বাসা বদল পিকআপ',
+    'সিসিটিভি লাগাব',
+    'পুরাতন ফ্রিজ বিক্রি',
+    'জরুরি অ্যাম্বুলেন্স',
+    'হোটেল বুকিং',
+    'চাঁন্দের গাড়ি',
+    'নাজিরারটেক শুঁটকি',
+  ];
+
   @override
   void initState() {
     super.initState();
+    if (widget.initialIntentCode != null) {
+      _selectedIntent = UserIntent.findByCode(widget.initialIntentCode);
+    }
     _loadCategories();
   }
 
@@ -109,13 +143,12 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
 
     try {
       final cats = await widget.repository.getMainCategories();
-      // Sort by backend sort_order
       cats.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
       if (mounted) {
         setState(() {
           _allCategories = cats;
-          _filteredCategories = cats;
+          _applyIntentAndQueryFilter();
           _isLoadingCategories = false;
 
           // If initial category passed, pre-select it
@@ -131,31 +164,44 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
       if (mounted) {
         setState(() {
           _isLoadingCategories = false;
-          _categoryError = 'বিভাগগুলো লোড করা যাচ্ছে না।';
+          _categoryError = 'বিভাগগুলো লোড করা যাচ্ছে না। দয়া করে আবার চেষ্টা করুন।';
         });
       }
     }
   }
 
-  Future<void> _filterCategories(String query) async {
-    final q = query.trim().toLowerCase();
-    if (q.isEmpty) {
-      setState(() {
-        _filteredCategories = _allCategories;
-        _taxonomySearchResult = null;
-        _isSearchingTaxonomy = false;
-      });
-      return;
+  void _applyIntentAndQueryFilter() {
+    final query = _categorySearchController.text.trim().toLowerCase();
+    List<CategoryItem> baseList = _allCategories;
+
+    // Filter by Intent if selected and not searching text
+    if (_selectedIntent != null && query.isEmpty) {
+      final suggestedIds = _selectedIntent!.suggestedCategoryIds;
+      baseList = _allCategories.where((c) => suggestedIds.contains(c.id)).toList();
+      if (baseList.isEmpty) {
+        baseList = _allCategories;
+      }
     }
 
-    setState(() {
+    if (query.isEmpty) {
+      _filteredCategories = baseList;
+      _taxonomySearchResult = null;
+      _isSearchingTaxonomy = false;
+    } else {
       _filteredCategories = _allCategories.where((cat) {
-        final matchBn = cat.nameBn.toLowerCase().contains(q);
-        final matchEn = cat.nameEn.toLowerCase().contains(q);
-        final matchDesc = cat.descriptionBn.toLowerCase().contains(q);
-        final matchSlug = cat.slug.toLowerCase().contains(q);
+        final matchBn = cat.nameBn.toLowerCase().contains(query);
+        final matchEn = cat.nameEn.toLowerCase().contains(query);
+        final matchDesc = cat.descriptionBn.toLowerCase().contains(query);
+        final matchSlug = cat.slug.toLowerCase().contains(query);
         return matchBn || matchEn || matchDesc || matchSlug;
       }).toList();
+    }
+  }
+
+  Future<void> _filterCategories(String query) async {
+    final q = query.trim().toLowerCase();
+    setState(() {
+      _applyIntentAndQueryFilter();
     });
 
     if (q.length >= 2) {
@@ -185,6 +231,19 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
     }
   }
 
+  void _onIntentSelected(UserIntent? intent) {
+    setState(() {
+      _selectedIntent = intent;
+      _categorySearchController.clear();
+      _applyIntentAndQueryFilter();
+    });
+  }
+
+  void _onQuickChipTapped(String keyword) {
+    _categorySearchController.text = keyword;
+    _filterCategories(keyword);
+  }
+
   Future<void> _selectCategory(CategoryItem cat, {bool autoAdvance = true}) async {
     setState(() {
       _selectedCategory = cat;
@@ -202,7 +261,6 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
 
     try {
       final subs = await widget.repository.getSubcategories(cat.id);
-      // Sort by backend sort_order
       subs.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
       if (mounted) {
@@ -250,6 +308,7 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
   }
 
   Future<void> _selectRankedItem(RankedSearchItem item) async {
+    _lastMatchedAlias = item.matchedAlias;
     try {
       CategoryItem targetCat;
       if (_allCategories.any((c) => c.id == item.categoryId)) {
@@ -260,7 +319,6 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
       }
 
       if (item.isSubCategory && item.id > 0) {
-        // Find or build subcategory item
         final subs = await widget.repository.getSubcategories(item.categoryId);
         SubCategoryItem targetSub;
         if (subs.any((s) => s.id == item.id)) {
@@ -283,15 +341,15 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
             CategorySelectionResult(
               category: targetCat,
               subcategory: targetSub,
+              intent: _selectedIntent,
+              matchedAlias: item.matchedAlias,
             ),
           );
         }
       } else {
-        // Direct category selection -> proceed to subcategory step
         _selectCategory(targetCat);
       }
     } catch (_) {
-      // Fallback: regular category selection if match resolution fails
       if (_allCategories.any((c) => c.id == item.categoryId)) {
         _selectCategory(_allCategories.firstWhere((c) => c.id == item.categoryId));
       }
@@ -308,6 +366,8 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
         CategorySelectionResult(
           category: _selectedCategory!,
           subcategory: sub,
+          intent: _selectedIntent,
+          matchedAlias: _lastMatchedAlias,
         ),
       );
     }
@@ -381,6 +441,7 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
                   style: AppTypography.largeHeading3.copyWith(
                     color: const Color(0xFF0F172A),
                     fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
@@ -398,7 +459,7 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
   }
 
   // ==========================================
-  // STEP 1: Main Category Selection
+  // STEP 1: Main Category & Intent Selection
   // ==========================================
   Widget _buildCategoryStep() {
     if (_isLoadingCategories) {
@@ -454,16 +515,17 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
         : _filteredCategories;
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Category Search Field
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
           child: TextField(
             controller: _categorySearchController,
             onChanged: _filterCategories,
             style: AppTypography.bodyRegular,
             decoration: InputDecoration(
-              hintText: '🔍 Category খুঁজুন (যেমন: নির্মাণ, চিকিৎসা, গাড়ি)...',
+              hintText: '🔍 সেবা বা প্রয়োজন খুঁজুন (যেমন: রাজমিস্ত্রি, ফ্রিজ, সিসিটিভি)...',
               hintStyle: AppTypography.bodyRegular.copyWith(color: const Color(0xFF94A3B8), fontSize: 13),
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
@@ -493,12 +555,131 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
           ),
         ),
 
+        // Quick Suggestion Chips
+        SizedBox(
+          height: 38,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            children: [
+              ..._popularCoxKeywords.map((kw) {
+                final isSelected = _categorySearchController.text.trim() == kw;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: ActionChip(
+                    label: Text(kw),
+                    labelStyle: AppTypography.labelSmall.copyWith(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected ? Colors.white : const Color(0xFF334155),
+                    ),
+                    backgroundColor: isSelected ? AppColors.primary : const Color(0xFFF1F5F9),
+                    side: BorderSide(color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                    onPressed: () => _onQuickChipTapped(kw),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+
+        // User Intent Filter Strip
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+          child: Row(
+            children: [
+              Text(
+                'উদ্দেশ্য অনুসারে ফিল্টার:',
+                style: AppTypography.bodySmall.copyWith(
+                  color: const Color(0xFF64748B),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (_selectedIntent != null)
+                GestureDetector(
+                  onTap: () => _onIntentSelected(null),
+                  child: Text(
+                    'সব দেখুন (রিসেট)',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+
+        // Intent Chips Row
+        SizedBox(
+          height: 36,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+            children: [
+              // All Filter
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: FilterChip(
+                  label: const Text('সব ক্যাটাগরি'),
+                  selected: _selectedIntent == null,
+                  onSelected: (selected) {
+                    if (selected) _onIntentSelected(null);
+                  },
+                  labelStyle: AppTypography.labelSmall.copyWith(
+                    fontSize: 11,
+                    color: _selectedIntent == null ? Colors.white : const Color(0xFF334155),
+                    fontWeight: _selectedIntent == null ? FontWeight.bold : FontWeight.w500,
+                  ),
+                  selectedColor: AppColors.primary,
+                  backgroundColor: Colors.white,
+                  checkmarkColor: Colors.white,
+                  side: BorderSide(color: _selectedIntent == null ? AppColors.primary : const Color(0xFFCBD5E1)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                ),
+              ),
+              ...UserIntent.standardIntents.map((intent) {
+                final isSelected = _selectedIntent?.code == intent.code;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: FilterChip(
+                    label: Text(intent.nameBn),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      _onIntentSelected(selected ? intent : null);
+                    },
+                    labelStyle: AppTypography.labelSmall.copyWith(
+                      fontSize: 11,
+                      color: isSelected ? Colors.white : const Color(0xFF334155),
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    ),
+                    selectedColor: AppColors.primary,
+                    backgroundColor: Colors.white,
+                    checkmarkColor: Colors.white,
+                    side: BorderSide(color: isSelected ? AppColors.primary : const Color(0xFFCBD5E1)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 4),
+
         // Categories List
         Expanded(
           child: _filteredCategories.isEmpty && (_taxonomySearchResult == null || _taxonomySearchResult!.rankedResults.isEmpty)
-              ? _buildEmptyView('কোনো বিভাগ পাওয়া যায়নি', 'বানান সঠিক আছে কিনা যাচাই করুন অথবা অন্য শব্দে খুঁজুন।')
+              ? _buildEmptyView('কোনো বিভাগ বা সেবা পাওয়া যায়নি', 'বানান সঠিক আছে কিনা যাচাই করুন অথবা অন্য শব্দে খুঁজুন।')
               : ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
                   children: [
                     // Direct Taxonomy / Alias Matches Section
                     if (_categorySearchController.text.trim().isNotEmpty &&
@@ -521,11 +702,39 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
                           ],
                         ),
                       ),
-                      ..._taxonomySearchResult!.rankedResults.take(4).map((item) => _buildDirectMatchTile(item)),
+                      ..._taxonomySearchResult!.rankedResults.take(5).map((item) => _buildDirectMatchTile(item)),
                       const SizedBox(height: 14),
                     ],
 
-                    // Popular Categories Section (if not searching)
+                    // Intent Banner (if Intent selected)
+                    if (_selectedIntent != null && _categorySearchController.text.isEmpty) ...[
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0FDFA),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFCCFBF1)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.lightbulb_outline, size: 18, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '${_selectedIntent!.nameBn}: ${_selectedIntent!.shortHintBn}',
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: const Color(0xFF115E59),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    // Popular Categories Section (if not searching text)
                     if (_categorySearchController.text.isEmpty && popularCategories.isNotEmpty) ...[
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8, top: 4),
@@ -549,7 +758,7 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Text(
-                          'সব বিভাগ (${_allCategories.length}টি)',
+                          'অন্যান্য বিভাগ (${_filteredCategories.length}টি)',
                           style: AppTypography.mediumHeading2.copyWith(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -614,7 +823,7 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  '${item.matchedAlias} থেকে',
+                  '“${item.matchedAlias}” এলিয়াস মিল',
                   style: AppTypography.bodySmall.copyWith(
                     fontSize: 9,
                     color: const Color(0xFF15803D),
@@ -636,16 +845,16 @@ class _CategoryCascadingPickerState extends State<CategoryCascadingPicker> {
           ),
         ),
         trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
             color: AppColors.primary,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
-            'নির্বাচন করুন',
+            'নির্বাচন',
             style: AppTypography.labelSmall.copyWith(
               color: Colors.white,
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.bold,
             ),
           ),

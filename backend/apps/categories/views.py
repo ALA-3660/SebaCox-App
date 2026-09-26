@@ -9,8 +9,8 @@ from django.db.models import Count, Q
 from rest_framework import views, status, permissions
 from common.responses import StandardResponse
 
-from .models import Category, SubCategory, Service, TaxonomyAlias
-from .constants import CategoryKind, ServiceType
+from .models import Category, SubCategory, Service, TaxonomyAlias, TaxonomyVersion, TaxonomyChangeLog
+from .constants import CategoryKind, ServiceType, TaxonomyStatus, TaxonomyActionType, AliasTargetType
 from .serializers import (
     CategorySerializer,
     CategorySummarySerializer,
@@ -20,8 +20,21 @@ from .serializers import (
     ServiceSerializer,
     ServiceSummarySerializer,
     TaxonomyAliasSerializer,
+    TaxonomyVersionSerializer,
+    TaxonomyChangeLogSerializer,
+    TaxonomyImpactSerializer,
+    TaxonomyRenameSerializer,
+    TaxonomyDeactivateSerializer,
+    TaxonomyReactivateSerializer,
+    TaxonomyDeprecateSerializer,
+    TaxonomyMergeCategorySerializer,
+    TaxonomyMergeSubCategorySerializer,
+    TaxonomyMoveSubCategorySerializer,
+    TaxonomyVersionBumpSerializer,
 )
 from .services import CategoryTreeService, ServiceSearchService, TaxonomySearchService
+from .governance import TaxonomyGovernanceService
+from .migration_engine import TaxonomyMigrationEngine
 
 
 class IsAdminOrReadOnly(permissions.BasePermission):
@@ -388,3 +401,534 @@ class TaxonomyAliasListView(views.APIView):
             data=serializer.data,
             message="ট্যাক্সোনমি এলিয়াস তালিকা পাওয়া গেছে।"
         )
+
+
+# =============================================================================
+# TAXONOMY GOVERNANCE & VERSIONING ENDPOINTS (Phase 4D)
+# =============================================================================
+
+class TaxonomyManifestView(views.APIView):
+    """
+    GET /api/v1/taxonomy/manifest/
+    Publicly accessible endpoint returning current active taxonomy release version,
+    metadata, checksum, and total counts for mobile cache synchronization.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        manifest = TaxonomyGovernanceService.get_current_taxonomy_manifest()
+        return StandardResponse.success(
+            data=manifest,
+            message="ট্যাক্সোনমি ম্যানিফেস্ট এবং ভার্সন মেটাডাটা পাওয়া গেছে।"
+        )
+
+
+class TaxonomyVersionListView(views.APIView):
+    """
+    GET /api/v1/taxonomy/governance/versions/ - List all taxonomy releases.
+    POST /api/v1/taxonomy/governance/versions/ - Bump / publish new version (Admin only).
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        versions = TaxonomyVersion.objects.all().order_by('-applied_at')
+        serializer = TaxonomyVersionSerializer(versions, many=True)
+        return StandardResponse.success(
+            data=serializer.data,
+            message="ট্যাক্সোনমি ভার্সন ইতিহাস পাওয়া গেছে।"
+        )
+
+    def post(self, request):
+        serializer = TaxonomyVersionBumpSerializer(data=request.data)
+        if not serializer.is_valid():
+            return StandardResponse.error(
+                message="ভার্সন আপডেটে ত্রুটি রয়েছে।",
+                errors=serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        data = serializer.validated_data
+        new_version = TaxonomyGovernanceService.bump_taxonomy_version(
+            version_number=data['version_number'],
+            release_title=data['release_title'],
+            description=data.get('description', ''),
+            changelog=data.get('changelog', []),
+            user=request.user if request.user.is_authenticated else None
+        )
+        return StandardResponse.success(
+            data=TaxonomyVersionSerializer(new_version).data,
+            message=f"ট্যাক্সোনমি ভার্সন v{new_version.version_number} সফলভাবে প্রকাশিত হয়েছে।",
+            status_code=status.HTTP_201_CREATED
+        )
+
+
+class TaxonomyChangeLogListView(views.APIView):
+    """
+    GET /api/v1/taxonomy/governance/audit-logs/
+    View immutable taxonomy governance audit logs with filtering.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        queryset = TaxonomyChangeLog.objects.all().order_by('-created_at')
+
+        target_type = request.query_params.get('target_type')
+        if target_type:
+            queryset = queryset.filter(target_type=target_type)
+
+        target_id = request.query_params.get('target_id')
+        if target_id and target_id.isdigit():
+            queryset = queryset.filter(target_id=int(target_id))
+
+        action = request.query_params.get('action')
+        if action:
+            queryset = queryset.filter(action=action)
+
+        limit_param = request.query_params.get('limit')
+        limit = int(limit_param) if limit_param and limit_param.isdigit() else 50
+
+        serializer = TaxonomyChangeLogSerializer(queryset[:limit], many=True)
+        return StandardResponse.success(
+            data=serializer.data,
+            message="ট্যাক্সোনমি অডিট লগ পাওয়া গেছে।"
+        )
+
+
+class TaxonomyImpactAnalysisView(views.APIView):
+    """
+    GET /api/v1/taxonomy/governance/impact/?target_type=CATEGORY|SUBCATEGORY&target_id=123
+    Impact analysis preview prior to deactivation, deprecation, or merge.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        target_type = request.query_params.get('target_type')
+        target_id_param = request.query_params.get('target_id')
+
+        if not target_type or not target_id_param or not target_id_param.isdigit():
+            return StandardResponse.error(
+                message="target_type এবং target_id আবশ্যক।",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        target_id = int(target_id_param)
+        try:
+            if target_type.upper() == 'CATEGORY':
+                impact = TaxonomyGovernanceService.get_category_impact(target_id)
+            elif target_type.upper() == 'SUBCATEGORY':
+                impact = TaxonomyGovernanceService.get_subcategory_impact(target_id)
+            else:
+                return StandardResponse.error(
+                    message="অকার্যকর target_type (CATEGORY অথবা SUBCATEGORY দিন)।",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            return StandardResponse.success(
+                data=impact,
+                message="ইম্প্যাক্ট অ্যানালাইসিস সম্পন্ন হয়েছে।"
+            )
+        except Exception as e:
+            return StandardResponse.error(
+                message=str(e),
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class TaxonomyRenameView(views.APIView):
+    """
+    POST /api/v1/taxonomy/governance/rename/
+    Rename a Category or SubCategory with search alias preservation.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        serializer = TaxonomyRenameSerializer(data=request.data)
+        if not serializer.is_valid():
+            return StandardResponse.error(
+                message="ইনপুট ত্রুটি।",
+                errors=serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        data = serializer.validated_data
+        try:
+            if data['target_type'] == 'CATEGORY':
+                cat = TaxonomyGovernanceService.rename_category(
+                    category_id=data['target_id'],
+                    name_bn=data['name_bn'],
+                    name_en=data['name_en'],
+                    reason=data.get('reason', ''),
+                    user=request.user,
+                    preserve_alias=data.get('preserve_alias', True)
+                )
+                return StandardResponse.success(
+                    data=CategorySerializer(cat).data,
+                    message="ক্যাটাগরি সফলভাবে পুনঃনামকরণ করা হয়েছে।"
+                )
+            else:
+                sub = TaxonomyGovernanceService.rename_subcategory(
+                    subcategory_id=data['target_id'],
+                    name_bn=data['name_bn'],
+                    name_en=data['name_en'],
+                    reason=data.get('reason', ''),
+                    user=request.user,
+                    preserve_alias=data.get('preserve_alias', True)
+                )
+                return StandardResponse.success(
+                    data=SubCategorySerializer(sub).data,
+                    message="উপ-ক্যাটাগরি সফলভাবে পুনঃনামকরণ করা হয়েছে।"
+                )
+        except Exception as e:
+            return StandardResponse.error(
+                message=str(e),
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class TaxonomyDeactivateView(views.APIView):
+    """
+    POST /api/v1/taxonomy/governance/deactivate/
+    Deactivate a Category or SubCategory non-destructively.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        serializer = TaxonomyDeactivateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return StandardResponse.error(
+                message="ইনপুট ত্রুটি।",
+                errors=serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        data = serializer.validated_data
+        try:
+            if data['target_type'] == 'CATEGORY':
+                cat = TaxonomyGovernanceService.deactivate_category(
+                    category_id=data['target_id'],
+                    reason=data.get('reason', ''),
+                    user=request.user
+                )
+                return StandardResponse.success(
+                    data=CategorySerializer(cat).data,
+                    message="ক্যাটাগরি সফলভাবে নিষ্ক্রিয় করা হয়েছে।"
+                )
+            else:
+                sub = TaxonomyGovernanceService.deactivate_subcategory(
+                    subcategory_id=data['target_id'],
+                    reason=data.get('reason', ''),
+                    user=request.user
+                )
+                return StandardResponse.success(
+                    data=SubCategorySerializer(sub).data,
+                    message="উপ-ক্যাটাগরি সফলভাবে নিষ্ক্রিয় করা হয়েছে।"
+                )
+        except Exception as e:
+            return StandardResponse.error(
+                message=str(e),
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class TaxonomyReactivateView(views.APIView):
+    """
+    POST /api/v1/taxonomy/governance/reactivate/
+    Reactivate a Category or SubCategory.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        serializer = TaxonomyReactivateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return StandardResponse.error(
+                message="ইনপুট ত্রুটি।",
+                errors=serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        data = serializer.validated_data
+        try:
+            if data['target_type'] == 'CATEGORY':
+                cat = TaxonomyGovernanceService.reactivate_category(
+                    category_id=data['target_id'],
+                    reason=data.get('reason', ''),
+                    user=request.user
+                )
+                return StandardResponse.success(
+                    data=CategorySerializer(cat).data,
+                    message="ক্যাটাগরি সফলভাবে সক্রিয় করা হয়েছে।"
+                )
+            else:
+                sub = TaxonomyGovernanceService.reactivate_subcategory(
+                    subcategory_id=data['target_id'],
+                    reason=data.get('reason', ''),
+                    user=request.user
+                )
+                return StandardResponse.success(
+                    data=SubCategorySerializer(sub).data,
+                    message="উপ-ক্যাটাগরি সফলভাবে সক্রিয় করা হয়েছে।"
+                )
+        except Exception as e:
+            return StandardResponse.error(
+                message=str(e),
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class TaxonomyDeprecateView(views.APIView):
+    """
+    POST /api/v1/taxonomy/governance/deprecate/
+    Deprecate a Category or SubCategory with replacement pointer.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        serializer = TaxonomyDeprecateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return StandardResponse.error(
+                message="ইনপুট ত্রুটি।",
+                errors=serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        data = serializer.validated_data
+        try:
+            if data['target_type'] == 'CATEGORY':
+                cat = TaxonomyGovernanceService.deprecate_category(
+                    category_id=data['target_id'],
+                    reason=data['reason'],
+                    replacement_id=data.get('replacement_id'),
+                    user=request.user
+                )
+                return StandardResponse.success(
+                    data=CategorySerializer(cat).data,
+                    message="ক্যাটাগরি সফলভাবে বাতিল/স্থগিত (Deprecated) ঘোষণা করা হয়েছে।"
+                )
+            else:
+                sub = TaxonomyGovernanceService.deprecate_subcategory(
+                    subcategory_id=data['target_id'],
+                    reason=data['reason'],
+                    replacement_id=data.get('replacement_id'),
+                    user=request.user
+                )
+                return StandardResponse.success(
+                    data=SubCategorySerializer(sub).data,
+                    message="উপ-ক্যাটাগরি সফলভাবে বাতিল/স্থগিত (Deprecated) ঘোষণা করা হয়েছে।"
+                )
+        except Exception as e:
+            return StandardResponse.error(
+                message=str(e),
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class TaxonomyMergeCategoryView(views.APIView):
+    """
+    POST /api/v1/taxonomy/governance/merge/category/
+    Merge source Category into target Category with full dependency re-mapping.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        serializer = TaxonomyMergeCategorySerializer(data=request.data)
+        if not serializer.is_valid():
+            return StandardResponse.error(
+                message="ইনপুট ত্রুটি।",
+                errors=serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        data = serializer.validated_data
+        try:
+            summary = TaxonomyGovernanceService.merge_category(
+                source_category_id=data['source_category_id'],
+                target_category_id=data['target_category_id'],
+                reason=data['reason'],
+                user=request.user
+            )
+            return StandardResponse.success(
+                data=summary,
+                message="ক্যাটাগরি সফলভাবে মার্জ করা হয়েছে এবং সকল সম্পর্ক পুনঃনির্ধারিত হয়েছে।"
+            )
+        except Exception as e:
+            return StandardResponse.error(
+                message=str(e),
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class TaxonomyMergeSubCategoryView(views.APIView):
+    """
+    POST /api/v1/taxonomy/governance/merge/subcategory/
+    Merge source SubCategory into target SubCategory.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        serializer = TaxonomyMergeSubCategorySerializer(data=request.data)
+        if not serializer.is_valid():
+            return StandardResponse.error(
+                message="ইনপুট ত্রুটি।",
+                errors=serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        data = serializer.validated_data
+        try:
+            summary = TaxonomyGovernanceService.merge_subcategory(
+                source_subcategory_id=data['source_subcategory_id'],
+                target_subcategory_id=data['target_subcategory_id'],
+                reason=data['reason'],
+                user=request.user
+            )
+            return StandardResponse.success(
+                data=summary,
+                message="উপ-ক্যাটাগরি সফলভাবে মার্জ করা হয়েছে এবং সকল নির্ভরতা হালনাগাদ করা হয়েছে।"
+            )
+        except Exception as e:
+            return StandardResponse.error(
+                message=str(e),
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class TaxonomyMoveSubCategoryView(views.APIView):
+    """
+    POST /api/v1/taxonomy/governance/move/subcategory/
+    Move a SubCategory to a new Master Category.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        serializer = TaxonomyMoveSubCategorySerializer(data=request.data)
+        if not serializer.is_valid():
+            return StandardResponse.error(
+                message="ইনপুট ত্রুটি।",
+                errors=serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        data = serializer.validated_data
+        try:
+            sub = TaxonomyGovernanceService.move_subcategory(
+                subcategory_id=data['subcategory_id'],
+                new_category_id=data['new_category_id'],
+                reason=data.get('reason', ''),
+                user=request.user
+            )
+            return StandardResponse.success(
+                data=SubCategorySerializer(sub).data,
+                message="উপ-ক্যাটাগরি সফলভাবে নতুন প্রধান ক্যাটাগরিতে স্থানান্তর করা হয়েছে।"
+            )
+        except Exception as e:
+            return StandardResponse.error(
+                message=str(e),
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class TaxonomyIntegrityCheckView(views.APIView):
+    """
+    GET /api/v1/categories/governance/integrity/
+    Run system-wide taxonomy integrity checks.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        report = TaxonomyGovernanceService.verify_taxonomy_integrity()
+        return StandardResponse.success(
+            data=report,
+            message="ট্যাক্সোনমি অখণ্ডতা পরীক্ষা সম্পন্ন হয়েছে।"
+        )
+
+
+class TaxonomyInventoryView(views.APIView):
+    """
+    GET /api/v1/categories/governance/inventory/
+    Phase 4H: Returns comprehensive data counts and classifications across all 10 entities.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        inventory = TaxonomyMigrationEngine.get_existing_data_inventory()
+        return StandardResponse.success(
+            data=inventory,
+            message="বিদ্যমান ডাটা ইনভেন্টরি ও কোয়ালিটি রিপোর্ট সফলভাবে প্রস্তুত হয়েছে।"
+        )
+
+
+class TaxonomyMigrationRulesView(views.APIView):
+    """
+    GET /api/v1/categories/governance/migration-map/
+    Phase 4H: Returns the canonical migration mapping rules.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        rules = TaxonomyMigrationEngine.get_migration_rules()
+        return StandardResponse.success(
+            data=rules,
+            message="মাস্টার ট্যাক্সোনমি মাইগ্রেশন ম্যাপিং রুলস লোড হয়েছে।"
+        )
+
+
+class TaxonomyOrphansView(views.APIView):
+    """
+    GET /api/v1/categories/governance/orphans/
+    Phase 4H: Detects and returns orphaned relations and duplicates.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        orphan_report = TaxonomyMigrationEngine.detect_orphans_and_duplicates()
+        return StandardResponse.success(
+            data=orphan_report,
+            message="অরফ্যান ও ডুপ্লিকেট অ্যানালাইসিস রিপোর্ট প্রস্তুত।"
+        )
+
+
+class TaxonomyDryRunView(views.APIView):
+    """
+    POST /api/v1/categories/governance/dry-run/
+    Phase 4H: Non-destructive dry-run migration simulation.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        result = TaxonomyMigrationEngine.dry_run()
+        return StandardResponse.success(
+            data=result,
+            message="মাইগ্রেশন ড্রাই-রান সফলভাবে সম্পন্ন হয়েছে। কোনো ডাটাবেজ পরিবর্তন ঘটেনি।"
+        )
+
+
+class TaxonomyExecuteMigrationView(views.APIView):
+    """
+    POST /api/v1/categories/governance/migrate/
+    Phase 4H: Executes live, transactional, and idempotent Master Taxonomy v1.0 migration.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def post(self, request):
+        force = bool(request.data.get('force', False))
+        result = TaxonomyMigrationEngine.execute_migration(user=request.user, force=force)
+        return StandardResponse.success(
+            data=result,
+            message="মাস্টার ট্যাক্সোনমি v1.0 মাইগ্রেশন সফলভাবে এক্সিকিউট হয়েছে।"
+        )
+
+
+class TaxonomyRollbackManifestView(views.APIView):
+    """
+    GET /api/v1/categories/governance/rollback-manifest/
+    Phase 4H: Returns audit trail manifest of taxonomy transformations.
+    """
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        manifest = TaxonomyMigrationEngine.generate_rollback_manifest()
+        return StandardResponse.success(
+            data=manifest,
+            message="মাইগ্রেশন রোলব্যাক অডিট ম্যানিফেস্ট প্রস্তুত।"
+        )
+
+

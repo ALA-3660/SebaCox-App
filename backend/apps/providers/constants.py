@@ -70,6 +70,7 @@ class PriceType(models.TextChoices):
     DAILY = 'DAILY', 'প্রতি দিন (Daily Rate)'
     PER_UNIT = 'PER_UNIT', 'প্রতি একক (Per Unit)'
     NEGOTIABLE = 'NEGOTIABLE', 'আলোচনা সাপেক্ষে (Negotiable)'
+    VISITING_CHARGE = 'VISITING_CHARGE', 'ভিজিট চার্জ (Visiting Charge)'
 
 
 class ProviderAuditAction(models.TextChoices):

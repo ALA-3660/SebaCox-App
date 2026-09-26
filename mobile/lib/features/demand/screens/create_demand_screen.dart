@@ -576,6 +576,27 @@ class _CreateDemandScreenState extends State<CreateDemandScreen> {
               _selectedCategoryNameBn = result.category.nameBn;
               _selectedServiceId = result.subcategory.id;
               _selectedServiceNameBn = result.subcategory.nameBn;
+              if (result.intent != null) {
+                switch (result.intent!.defaultDemandType) {
+                  case 'PRODUCT':
+                    _demandType = DemandType.product;
+                    break;
+                  case 'RENTAL':
+                    _demandType = DemandType.rental;
+                    break;
+                  case 'BOOKING':
+                    _demandType = DemandType.booking;
+                    break;
+                  case 'MARKETPLACE':
+                    _demandType = DemandType.marketplace;
+                    break;
+                  case 'INFORMATION':
+                    _demandType = DemandType.information;
+                    break;
+                  default:
+                    _demandType = DemandType.service;
+                }
+              }
             });
             _fetchSubcategories(result.category.id);
           },

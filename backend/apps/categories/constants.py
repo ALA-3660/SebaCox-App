@@ -7,6 +7,39 @@ Master Taxonomy Version 1.0 (31 Master Categories & Granular Sub-categories)
 from django.db import models
 
 
+class TaxonomyStatus(models.TextChoices):
+    """
+    Controlled lifecycle status for Categories and SubCategories.
+    - DRAFT: Under planning / not yet available for public or provider selection.
+    - ACTIVE: Live, active for all public searches, demand creation, and provider mapping.
+    - INACTIVE: Temporarily or permanently deactivated; historical references preserved.
+    - DEPRECATED: Obsolete taxonomy; cannot be chosen for new demands/services, references intact.
+    - MERGED: Absorbed into another canonical Category or SubCategory.
+    """
+    DRAFT = 'DRAFT', 'খসড়া (Draft)'
+    ACTIVE = 'ACTIVE', 'সক্রিয় (Active)'
+    INACTIVE = 'INACTIVE', 'নিষ্ক্রিয় (Inactive)'
+    DEPRECATED = 'DEPRECATED', 'বাতিলকৃত/অপ্রচলিত (Deprecated)'
+    MERGED = 'MERGED', 'একীভূত (Merged)'
+
+
+class TaxonomyActionType(models.TextChoices):
+    """
+    Audited taxonomy governance action classifications.
+    """
+    CREATE = 'CREATE', 'তৈরি (Create)'
+    UPDATE = 'UPDATE', 'তথ্য আপডেট (Update)'
+    RENAME = 'RENAME', 'পুনঃনামকরণ (Rename)'
+    DEACTIVATE = 'DEACTIVATE', 'নিষ্ক্রিয়করণ (Deactivate)'
+    REACTIVATE = 'REACTIVATE', 'পুনরায় সক্রিয়করণ (Reactivate)'
+    DEPRECATE = 'DEPRECATE', 'বাতিলকরণ (Deprecate)'
+    MERGE = 'MERGE', 'একীভূতকরণ (Merge)'
+    MOVE = 'MOVE', 'স্থানান্তর (Move)'
+    REPLACE = 'REPLACE', 'প্রতিস্থাপন (Replace)'
+    ALIAS_ADDED = 'ALIAS_ADDED', 'এলিয়াস যুক্ত (Alias Added)'
+    VERSION_BUMP = 'VERSION_BUMP', 'ভার্সন আপডেট (Version Bump)'
+
+
 class CategoryKind(models.TextChoices):
     """
     Architectural segregation:
@@ -403,7 +436,7 @@ SEBACOX_31_MASTER_CATEGORIES = [
             {'id': 1501, 'name_bn': 'হোম ও অনলাইন টিউটর (স্কুল/কলেজ)', 'name_en': 'Home & Online Tutor (School/College)', 'slug': 'home-online-tutor', 'order': 1},
             {'id': 1502, 'name_bn': 'কোরআন ও ধর্মীয় শিক্ষক', 'name_en': 'Quran & Religious Studies Teacher', 'slug': 'quran-religious-teacher', 'order': 2},
             {'id': 1503, 'name_bn': 'স্পোকেন ইংলিশ ও ভাষা শিক্ষা', 'name_en': 'Spoken English & Language Courses', 'slug': 'spoken-english-language', 'order': 3},
-            {'id': 1504, 'name_bn': 'মোটর ড্রাইভিং প্রশিক্ষণ স্কুল', 'name_en': 'Motor Driving Training School', slug: 'motor-driving-school', 'order': 4},
+            {'id': 1504, 'name_bn': 'মোটর ড্রাইভিং প্রশিক্ষণ স্কুল', 'name_en': 'Motor Driving Training School', 'slug': 'motor-driving-school', 'order': 4},
             {'id': 1505, 'name_bn': 'কম্পিউটার ও তথ্যপ্রযুক্তি প্রশিক্ষণ', 'name_en': 'Computer & IT Skills Training', 'slug': 'computer-it-training', 'order': 5},
             {'id': 1506, 'name_bn': 'চিত্রাঙ্কন, গান ও সৃজনশীল আর্ট ক্লাস', 'name_en': 'Drawing, Music & Creative Arts', 'slug': 'drawing-music-arts', 'order': 6},
         ]
@@ -843,25 +876,34 @@ INITIAL_TAXONOMY_ALIASES = [
     {'alias_text': 'doctor', 'normalized_text': 'doctor', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1201, 'language': AliasLanguage.EN, 'category_id': 12, 'alias_type': AliasType.ENGLISH, 'priority': 95},
     {'alias_text': 'নার্সিং হোম কেয়ার', 'normalized_text': 'নার্সিং হোম কেয়ার', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1203, 'language': AliasLanguage.BN, 'category_id': 12, 'alias_type': AliasType.COMMON, 'priority': 90},
 
-    # 14. IT & Mobile (Category 14)
-    {'alias_text': 'মোবাইল সার্ভিসিং', 'normalized_text': 'মোবাইল সার্ভিসিং', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1403, 'language': AliasLanguage.BN, 'category_id': 14, 'alias_type': AliasType.COMMON, 'priority': 95},
-    {'alias_text': 'mobile repair', 'normalized_text': 'mobile repair', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1403, 'language': AliasLanguage.EN, 'category_id': 14, 'alias_type': AliasType.ENGLISH, 'priority': 90},
-    {'alias_text': 'কম্পিউটার মেরামত', 'normalized_text': 'কম্পিউটার মেরামত', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1402, 'language': AliasLanguage.BN, 'category_id': 14, 'alias_type': AliasType.COMMON, 'priority': 90},
-    {'alias_text': 'cctv লাগাব', 'normalized_text': 'cctv লাগাব', 'target_type': AliasTargetType.CATEGORY, 'target_id': 14, 'language': AliasLanguage.BN, 'category_id': 14, 'alias_type': AliasType.COLLOQUIAL, 'priority': 85},
+    # 16. Jobs, Employment & Labour (Category 16)
+    {'alias_text': 'রাজমিস্ত্রির চাকরি চাই', 'normalized_text': 'রাজমিস্ত্রির চাকরি চাই', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1605, 'language': AliasLanguage.BN, 'category_id': 16, 'alias_type': AliasType.COMMON, 'priority': 95},
+    {'alias_text': 'রাজমিস্ত্রি নিয়োগ', 'normalized_text': 'রাজমিস্ত্রি নিয়োগ', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1605, 'language': AliasLanguage.BN, 'category_id': 16, 'alias_type': AliasType.COMMON, 'priority': 95},
+    {'alias_text': 'টেকনিশিয়ান নিয়োগ', 'normalized_text': 'টেকনিশিয়ান নিয়োগ', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1605, 'language': AliasLanguage.BN, 'category_id': 16, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'চাকরি চাই', 'normalized_text': 'চাকরি চাই', 'target_type': AliasTargetType.CATEGORY, 'target_id': 16, 'language': AliasLanguage.BN, 'category_id': 16, 'alias_type': AliasType.COMMON, 'priority': 95},
 
-    # 21. Buy & Sell / Second Hand (Category 21)
-    {'alias_text': 'পুরাতন জিনিস বিক্রি', 'normalized_text': 'পুরাতন জিনিস বিক্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2102, 'language': AliasLanguage.BN, 'category_id': 21, 'alias_type': AliasType.COMMON, 'priority': 90},
-    {'alias_text': 'পুরাতন ফ্রিজ বিক্রি', 'normalized_text': 'পুরাতন ফ্রিজ বিক্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2102, 'language': AliasLanguage.BN, 'category_id': 21, 'alias_type': AliasType.COMMON, 'priority': 95},
-    {'alias_text': 'used fridge', 'normalized_text': 'used fridge', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2102, 'language': AliasLanguage.EN, 'category_id': 21, 'alias_type': AliasType.ENGLISH, 'priority': 90},
-    {'alias_text': 'cctv কিনব', 'normalized_text': 'cctv কিনব', 'target_type': AliasTargetType.CATEGORY, 'target_id': 21, 'language': AliasLanguage.BN, 'category_id': 21, 'alias_type': AliasType.COLLOQUIAL, 'priority': 85},
+    # 18. Buy & Sell Products (Category 18)
+    {'alias_text': 'পুরাতন জিনিস বিক্রি', 'normalized_text': 'পুরাতন জিনিস বিক্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1802, 'language': AliasLanguage.BN, 'category_id': 18, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'পুরাতন ফ্রিজ বিক্রি', 'normalized_text': 'পুরাতন ফ্রিজ বিক্রি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1802, 'language': AliasLanguage.BN, 'category_id': 18, 'alias_type': AliasType.COMMON, 'priority': 95},
+    {'alias_text': 'used fridge', 'normalized_text': 'used fridge', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1802, 'language': AliasLanguage.EN, 'category_id': 18, 'alias_type': AliasType.ENGLISH, 'priority': 90},
+    {'alias_text': 'cctv কিনব', 'normalized_text': 'cctv কিনব', 'target_type': AliasTargetType.CATEGORY, 'target_id': 18, 'language': AliasLanguage.BN, 'category_id': 18, 'alias_type': AliasType.COLLOQUIAL, 'priority': 90},
+    {'alias_text': 'সিসিটিভি কিনব', 'normalized_text': 'সিসিটিভি কিনব', 'target_type': AliasTargetType.CATEGORY, 'target_id': 18, 'language': AliasLanguage.BN, 'category_id': 18, 'alias_type': AliasType.COLLOQUIAL, 'priority': 90},
+
+    # 19. Technology & Digital Services (Category 19)
+    {'alias_text': 'মোবাইল সার্ভিসিং', 'normalized_text': 'মোবাইল সার্ভিসিং', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1904, 'language': AliasLanguage.BN, 'category_id': 19, 'alias_type': AliasType.COMMON, 'priority': 95},
+    {'alias_text': 'mobile repair', 'normalized_text': 'mobile repair', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1904, 'language': AliasLanguage.EN, 'category_id': 19, 'alias_type': AliasType.ENGLISH, 'priority': 90},
+    {'alias_text': 'কম্পিউটার মেরামত', 'normalized_text': 'কম্পিউটার মেরামত', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1901, 'language': AliasLanguage.BN, 'category_id': 19, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'cctv লাগাব', 'normalized_text': 'cctv লাগাব', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1902, 'language': AliasLanguage.BN, 'category_id': 19, 'alias_type': AliasType.COLLOQUIAL, 'priority': 95},
+    {'alias_text': 'সিসিটিভি লাগাব', 'normalized_text': 'সিসিটিভি লাগাব', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 1902, 'language': AliasLanguage.BN, 'category_id': 19, 'alias_type': AliasType.COLLOQUIAL, 'priority': 95},
 
     # 26. Emergency & Rescue (Category 26)
     {'alias_text': 'অ্যাম্বুলেন্স', 'normalized_text': 'অ্যাম্বুলেন্স', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2601, 'language': AliasLanguage.BN, 'category_id': 26, 'alias_type': AliasType.EXACT, 'priority': 100},
     {'alias_text': 'ambulance', 'normalized_text': 'ambulance', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2601, 'language': AliasLanguage.EN, 'category_id': 26, 'alias_type': AliasType.ENGLISH, 'priority': 95},
     {'alias_text': 'অক্সিজেন', 'normalized_text': 'অক্সিজেন', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2602, 'language': AliasLanguage.BN, 'category_id': 26, 'alias_type': AliasType.EXACT, 'priority': 95},
     {'alias_text': 'oxygen cylinder', 'normalized_text': 'oxygen cylinder', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2602, 'language': AliasLanguage.EN, 'category_id': 26, 'alias_type': AliasType.ENGLISH, 'priority': 90},
-    {'alias_text': 'জরুরি বিদ্যুৎ সহায়তা', 'normalized_text': 'জরুরি বিদ্যুৎ সহায়তা', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2603, 'language': AliasLanguage.BN, 'category_id': 26, 'alias_type': AliasType.COMMON, 'priority': 95},
-    {'alias_text': 'জরুরি electrician', 'normalized_text': 'জরুরি electrician', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2603, 'language': AliasLanguage.BN, 'category_id': 26, 'alias_type': AliasType.COLLOQUIAL, 'priority': 90},
+    {'alias_text': 'জরুরি বিদ্যুৎ সহায়তা', 'normalized_text': 'জরুরি বিদ্যুৎ সহায়তা', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2604, 'language': AliasLanguage.BN, 'category_id': 26, 'alias_type': AliasType.COMMON, 'priority': 95},
+    {'alias_text': 'জরুরি electrician', 'normalized_text': 'জরুরি electrician', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2604, 'language': AliasLanguage.BN, 'category_id': 26, 'alias_type': AliasType.COLLOQUIAL, 'priority': 90},
+    {'alias_text': 'জরুরি ইলেকট্রিশিয়ান', 'normalized_text': 'জরুরি ইলেকট্রিশিয়ান', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2604, 'language': AliasLanguage.BN, 'category_id': 26, 'alias_type': AliasType.COLLOQUIAL, 'priority': 90},
 
     # 29. Security & Safety (Category 29)
     {'alias_text': 'সিসিটিভি', 'normalized_text': 'সিসিটিভি', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 2904, 'language': AliasLanguage.BN, 'category_id': 29, 'alias_type': AliasType.COMMON, 'priority': 95},
@@ -876,4 +918,6 @@ INITIAL_TAXONOMY_ALIASES = [
     {'alias_text': 'lpg gas', 'normalized_text': 'lpg gas', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 3001, 'language': AliasLanguage.EN, 'category_id': 30, 'alias_type': AliasType.ENGLISH, 'priority': 90},
     {'alias_text': 'সোলার প্যানেল', 'normalized_text': 'সোলার প্যানেল', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 3002, 'language': AliasLanguage.BN, 'category_id': 30, 'alias_type': AliasType.COMMON, 'priority': 90},
     {'alias_text': 'জেনারেটর ভাড়া', 'normalized_text': 'জেনারেটর ভাড়া', 'target_type': AliasTargetType.SUBCATEGORY, 'target_id': 3003, 'language': AliasLanguage.BN, 'category_id': 30, 'alias_type': AliasType.COMMON, 'priority': 90},
+    {'alias_text': 'সাধারণ electrician', 'normalized_text': 'সাধারণ electrician', 'target_type': AliasTargetType.CATEGORY, 'target_id': 30, 'language': AliasLanguage.BN, 'category_id': 30, 'alias_type': AliasType.COLLOQUIAL, 'priority': 90},
+    {'alias_text': 'সাধারণ ইলেকট্রিশিয়ান', 'normalized_text': 'সাধারণ ইলেকট্রিশিয়ান', 'target_type': AliasTargetType.CATEGORY, 'target_id': 30, 'language': AliasLanguage.BN, 'category_id': 30, 'alias_type': AliasType.COLLOQUIAL, 'priority': 90},
 ]

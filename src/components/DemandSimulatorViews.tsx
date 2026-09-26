@@ -43,7 +43,7 @@ import {
   COX_POSTAL_LOCATIONS, 
   COX_UNIONS, 
   COX_WARDS, 
-  COX_LOCALITIES 
+  COX_LOCALITIES // Includes Khurushkul Ward 5 (10405) with verified মামুন পাড়া (Mamun Para)
 } from '../data/coxSadarAddressMasterData';
 
 interface DemandSimulatorProps {

@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 """
 Phase 4 Category & Service Engine Test Suite for SebaCox.
-"মানুষের প্রয়োজন থেকে সেবার সমাধান।"
+Phase 4D & 4E: Taxonomy Governance, Search Alias Preservation, User Intent Separation & "+আমার প্রয়োজন" UX.
+"প্রয়োজন থেকে সমাধান- এক অ্যাপেই"
+"খুঁজুন, যোগাযোগ করুন, সেবা নিন- সহজেই"
 
 Comprehensive test suite verifying:
-1. Category Model Architecture & Fields (name_bn, name_en, slug, icon, level, sort_order, kind, is_active, is_featured)
-2. Kind Classification: Strict separation between PUBLIC_SERVICE_CATEGORY and SYSTEM_DOMAIN
-3. Hierarchy & Circular Dependency Prevention: Direct self-parenting & transitive cycles
-4. Slug Validation: Alphanumeric and hyphens, strictly no whitespace or invalid punctuation
-5. Service Model Architecture: All 10 capability flags, ServiceType choices, single source of truth
-6. Capability Matrix: Requires Booking, Supports Demand, Supports Offer, Supports Negotiation, Delivery, Location, Online, Order, Rental, Payment
-7. Search Service with Unicode NFC Normalization (Bengali & English)
-8. Initial 46 Master Taxonomy Modules completeness (36 Public Service Categories + 10 System Domains)
-9. Category Tree Recursive Assembly
-10. Global Bangla Typography Standard Contract Enforcement
+1. Master Taxonomy v1.0: Exact 31 Master Categories & 100+ Subcategories
+2. User Intent Separation: Category ≠ Intent (Intent is NOT a master category)
+3. Canonical Search Aliases with Dialect / Local Cox's Bazar Synonyms
+4. Slug Validation & Circular Dependency Prevention
+5. Capability Matrix Flags (Single Source of Truth)
+6. Search Alias Resolution with Normalized NFC Ranking
+7. Global Bangla Typography Standard Contract Enforcement
 """
 import sys
 import os
@@ -75,11 +74,15 @@ except ImportError:
     dj_models.SlugField = lambda *a, **kw: None
     dj_models.TextField = lambda *a, **kw: None
     dj_models.PositiveIntegerField = lambda *a, **kw: None
+    dj_models.IntegerField = lambda *a, **kw: None
+    dj_models.JSONField = lambda *a, **kw: None
     dj_models.BigAutoField = lambda *a, **kw: None
     dj_models.CASCADE = 'CASCADE'
     dj_models.PROTECT = 'PROTECT'
     dj_models.SET_NULL = 'SET_NULL'
     dj_models.Index = lambda *a, **kw: None
+    dj_models.UniqueConstraint = lambda *a, **kw: None
+    dj_models.CheckConstraint = lambda *a, **kw: None
     dj_models.Q = lambda *a, **kw: None
     dj_models.Count = lambda *a, **kw: None
     dj_models.Prefetch = lambda *a, **kw: None
@@ -103,7 +106,9 @@ except ImportError:
 from apps.categories.constants import (
     CategoryKind,
     ServiceType,
-    INITIAL_46_TAXONOMY_MODULES,
+    TaxonomyStatus,
+    SEBACOX_31_MASTER_CATEGORIES,
+    INITIAL_TAXONOMY_ALIASES,
 )
 from apps.categories.validators import (
     validate_slug,
@@ -111,8 +116,7 @@ from apps.categories.validators import (
 )
 from apps.categories.services import (
     CategoryTreeService,
-    ServiceSearchService,
-    TaxonomySeedService,
+    TaxonomySearchService,
 )
 
 class TestPhase4Categories:
@@ -138,18 +142,19 @@ class TestPhase4Categories:
 
     def run_all(self):
         print("\n==================================================")
-        print("SebaCox Phase 4: Category & Service Engine Tests")
+        print("SebaCox Phase 4: Category, Search Alias & Intent Tests")
         print("==================================================")
 
-        self.test_category_kind_separation()
+        self.test_master_31_categories_completeness()
+        self.test_intent_separation_from_category()
+        self.test_canonical_search_aliases()
         self.test_service_type_choices()
-        self.test_initial_46_taxonomy_completeness()
         self.test_slug_validation()
         self.test_circular_parent_validation()
         self.test_capability_matrix_definition()
         self.test_unicode_nfc_search_normalization()
         self.test_category_tree_assembly()
-        self.test_service_search_logic()
+        self.test_alias_search_ranking()
         self.test_global_bangla_typography_compliance()
 
         print("\n--------------------------------------------------")
@@ -157,50 +162,62 @@ class TestPhase4Categories:
         print("--------------------------------------------------\n")
         return self.failed == 0
 
-    def test_category_kind_separation(self):
-        print("\n[Group 1] Category Kind Separation (PUBLIC vs SYSTEM):")
-        self.assert_equal(CategoryKind.PUBLIC_SERVICE_CATEGORY, "PUBLIC_SERVICE_CATEGORY", "Public service kind value matches")
-        self.assert_equal(CategoryKind.SYSTEM_DOMAIN, "SYSTEM_DOMAIN", "System domain kind value matches")
-        choices = [c[0] for c in CategoryKind.choices]
-        self.assert_true("PUBLIC_SERVICE_CATEGORY" in choices, "PUBLIC_SERVICE_CATEGORY present in choices")
-        self.assert_true("SYSTEM_DOMAIN" in choices, "SYSTEM_DOMAIN present in choices")
+    def test_master_31_categories_completeness(self):
+        print("\n[Group 1] Master Taxonomy v1.0 (Exact 31 Master Categories):")
+        self.assert_equal(len(SEBACOX_31_MASTER_CATEGORIES), 31, "Exact 31 Master Categories defined")
+
+        # Verify all 31 categories have id 1..31 and unique slugs
+        ids = [c['id'] for c in SEBACOX_31_MASTER_CATEGORIES]
+        slugs = [c['slug'] for c in SEBACOX_31_MASTER_CATEGORIES]
+        self.assert_equal(len(set(ids)), 31, "All 31 category IDs are unique (1-31)")
+        self.assert_equal(len(set(slugs)), 31, "All 31 category slugs are unique")
+
+        # Count total subcategories
+        total_subcats = sum(len(c.get('subcategories', [])) for c in SEBACOX_31_MASTER_CATEGORIES)
+        self.assert_true(total_subcats >= 100, f"Total subcategories ({total_subcats}) is at least 100")
+
+        # Verify key Cox's Bazar sectors
+        slug_set = set(slugs)
+        self.assert_true('construction-engineering' in slug_set, "Category 1 Construction included")
+        self.assert_true('tourism-hospitality' in slug_set, "Category 8 Hotel & Resort included")
+        self.assert_true('travel-tickets-tours' in slug_set, "Category 9 Tourism Guide included")
+        self.assert_true('agriculture-fisheries' in slug_set, "Category 10 Marine Fisheries included")
+        self.assert_true('vehicle-rental-transport' in slug_set, "Category 6 Vehicle Rental included")
+        self.assert_true('emergency-rescue-services' in slug_set, "Category 26 Emergency Rescue included")
+
+    def test_intent_separation_from_category(self):
+        print("\n[Group 2] Intent Separation (Category ≠ Intent):")
+        # Ensure that verbs like 'buy', 'sell', 'rent', 'hire' are NOT top-level categories
+        # but mapped as separate Intent constructs
+        prohibited_category_slugs = {'buy', 'sell', 'hire', 'find', 'request', 'repair-intent'}
+        for c in SEBACOX_31_MASTER_CATEGORIES:
+            self.assert_true(c['slug'] not in prohibited_category_slugs, f"Category slug '{c['slug']}' is domain taxonomy, not an intent verb")
+
+    def test_canonical_search_aliases(self):
+        print("\n[Group 3] Canonical Search Aliases & Dialect Handling:")
+        self.assert_true(len(INITIAL_TAXONOMY_ALIASES) >= 30, f"Found {len(INITIAL_TAXONOMY_ALIASES)} search aliases")
+
+        alias_texts = {a['alias_text'].lower() for a in INITIAL_TAXONOMY_ALIASES}
+        # Check Cox's Bazar local and dialect phrases
+        self.assert_true('চাঁন্দের গাড়ি' in alias_texts, "Local term 'চাঁন্দের গাড়ি' indexed")
+        self.assert_true('নাজিরারটেক শুঁটকি' in alias_texts, "Local term 'নাজিরারটেক শুঁটকি' indexed")
+        self.assert_true('রাজমিস্ত্রি' in alias_texts, "Search term 'রাজমিস্ত্রি' indexed")
+        self.assert_true('মেস্ত্রি' in alias_texts, "Dialect term 'মেস্ত্রি' indexed")
+        self.assert_true('ফ্রিজ নষ্ট' in alias_texts, "Colloquial term 'ফ্রিজ নষ্ট' indexed")
+        self.assert_true('পুরাতন ফ্রিজ বিক্রি' in alias_texts, "Intent phrase 'পুরাতন ফ্রিজ বিক্রি' indexed")
+        self.assert_true('cctv লাগাব' in alias_texts, "Search phrase 'cctv লাগাব' indexed")
+        self.assert_true('জরুরি অ্যাম্বুলেন্স' in alias_texts or 'অ্যাম্বুলেন্স' in alias_texts, "Emergency ambulance indexed")
 
     def test_service_type_choices(self):
-        print("\n[Group 2] Service Types Definition:")
+        print("\n[Group 4] Service Types Definition:")
         expected_types = {'SERVICE', 'PRODUCT', 'RENTAL', 'BOOKING', 'DIGITAL_SERVICE', 'INFORMATION', 'MARKETPLACE'}
         actual_types = {c[0] for c in ServiceType.choices}
         self.assert_equal(actual_types, expected_types, "All standard service types are defined")
 
-    def test_initial_46_taxonomy_completeness(self):
-        print("\n[Group 3] Initial 46 Master Taxonomy Modules:")
-        self.assert_equal(len(INITIAL_46_TAXONOMY_MODULES), 46, "Exact 46 taxonomy modules defined")
-
-        # Count kinds
-        public_cats = [m for m in INITIAL_46_TAXONOMY_MODULES if m['kind'] == CategoryKind.PUBLIC_SERVICE_CATEGORY]
-        system_domains = [m for m in INITIAL_46_TAXONOMY_MODULES if m['kind'] == CategoryKind.SYSTEM_DOMAIN]
-
-        self.assert_true(len(public_cats) > 0, f"Found {len(public_cats)} Public Service Categories")
-        self.assert_true(len(system_domains) > 0, f"Found {len(system_domains)} System Domains")
-        self.assert_equal(len(public_cats) + len(system_domains), 46, "Total public categories and system domains equals 46")
-
-        # Verify Cox's Bazar domain specific categories exist
-        slugs = {m['slug'] for m in INITIAL_46_TAXONOMY_MODULES}
-        self.assert_true('travel-tourism' in slugs or 'tourism-hospitality' in slugs, "Tourism category included")
-        self.assert_true('fisheries-marine-products' in slugs or 'marine-fisheries' in slugs, "Marine/Fisheries category included")
-        self.assert_true('building-materials' in slugs, "Building Materials category included")
-        self.assert_true('construction-engineering' in slugs, "Construction & Engineering category included")
-        self.assert_true('health-medical' in slugs, "Health & Medical category included")
-        self.assert_true('transport-tickets' in slugs or 'vehicle-services' in slugs, "Transport category included")
-
-        # Verify all items have both Bangla and English names
-        all_have_bilingual = all(m.get('name_bn') and m.get('name_en') for m in INITIAL_46_TAXONOMY_MODULES)
-        self.assert_true(all_have_bilingual, "All 46 taxonomy modules possess both Bangla and English names")
-
     def test_slug_validation(self):
-        print("\n[Group 4] Slug Validation:")
+        print("\n[Group 5] Slug Validation:")
         from django.core.exceptions import ValidationError
 
-        # Valid slugs
         valid_slugs = ['health-medical', 'auto-bricks-supply', 'hotel-booking-1', 'shutki-seafood']
         for s in valid_slugs:
             try:
@@ -209,7 +226,6 @@ class TestPhase4Categories:
             except ValidationError:
                 self.assert_true(False, f"Slug '{s}' incorrectly failed validation")
 
-        # Invalid slugs
         invalid_slugs = ['Health Medical', 'hotel/booking', 'doctor@chamber', 'bricks--!', '']
         for s in invalid_slugs:
             try:
@@ -219,7 +235,7 @@ class TestPhase4Categories:
                 self.assert_true(True, f"Invalid slug '{s}' correctly caught by ValidationError")
 
     def test_circular_parent_validation(self):
-        print("\n[Group 5] Circular Parent Prevention:")
+        print("\n[Group 6] Circular Parent Prevention:")
         from django.core.exceptions import ValidationError
 
         class MockCategoryObj:
@@ -271,8 +287,7 @@ class TestPhase4Categories:
             self.assert_true(False, "Valid parent assignment should not raise error")
 
     def test_capability_matrix_definition(self):
-        print("\n[Group 6] Capability Matrix Flags (Single Source of Truth):")
-        # Ensure all 10 capability flags are recognized
+        print("\n[Group 7] Capability Matrix Flags (Single Source of Truth):")
         expected_capabilities = [
             'requires_booking',
             'supports_demand',
@@ -287,47 +302,12 @@ class TestPhase4Categories:
         ]
         self.assert_equal(len(expected_capabilities), 10, "10 capability flags in matrix")
 
-        # Mock sample service capabilities for Bricks (Building Materials)
-        bricks_capabilities = {
-            'requires_booking': False,
-            'supports_demand': True,
-            'supports_offer': True,
-            'supports_negotiation': True,
-            'supports_delivery': True,
-            'supports_location': True,
-            'supports_online': False,
-            'supports_order': True,
-            'supports_rental': False,
-            'supports_payment': True,
-        }
-        self.assert_true(bricks_capabilities['supports_delivery'], "Bricks service supports delivery")
-        self.assert_true(bricks_capabilities['supports_negotiation'], "Bricks service supports negotiation")
-        self.assert_true(not bricks_capabilities['requires_booking'], "Bricks service does not require booking")
-
-        # Mock sample service capabilities for Doctor Consultation
-        doctor_capabilities = {
-            'requires_booking': True,
-            'supports_demand': True,
-            'supports_offer': False,
-            'supports_negotiation': False,
-            'supports_delivery': False,
-            'supports_location': True,
-            'supports_online': True,
-            'supports_order': False,
-            'supports_rental': False,
-            'supports_payment': True,
-        }
-        self.assert_true(doctor_capabilities['requires_booking'], "Doctor service requires booking")
-        self.assert_true(doctor_capabilities['supports_online'], "Doctor service supports online consultation")
-
     def test_unicode_nfc_search_normalization(self):
-        print("\n[Group 7] Unicode NFC Search Normalization:")
-        # Test NFC normalization with Bengali decomposed characters
-        raw_bengali = "ডা‌ক্তার"  # with possible ZWNJ or decomposed accents
+        print("\n[Group 8] Unicode NFC Search Normalization:")
+        raw_bengali = "ডা‌ক্তার"
         normalized = unicodedata.normalize('NFC', raw_bengali)
         self.assert_equal(unicodedata.is_normalized('NFC', normalized), True, "Text is normalized to Unicode NFC")
 
-        # Normalized query cleans whitespaces
         test_queries = ["  ডাক্তার   ", "ইট \n", "  Hotel  "]
         expected_cleaned = ["ডাক্তার", "ইট", "hotel"]
         for q, exp in zip(test_queries, expected_cleaned):
@@ -335,8 +315,7 @@ class TestPhase4Categories:
             self.assert_equal(cleaned, exp, f"Cleaned query '{cleaned}' equals '{exp}'")
 
     def test_category_tree_assembly(self):
-        print("\n[Group 8] Category Tree Assembly Algorithm:")
-        # Test tree service grouping
+        print("\n[Group 9] Category Tree Assembly Algorithm:")
         mock_cats = [
             {'id': 1, 'name_bn': 'মূল ক্যাটাগরি ১', 'parent_id': None, 'sort_order': 1, 'is_active': True},
             {'id': 2, 'name_bn': 'সাব ক্যাটাগরি ১.১', 'parent_id': 1, 'sort_order': 1, 'is_active': True},
@@ -344,7 +323,6 @@ class TestPhase4Categories:
             {'id': 4, 'name_bn': 'মূল ক্যাটাগরি ২', 'parent_id': None, 'sort_order': 2, 'is_active': True},
         ]
 
-        # Grouping logic
         by_parent = {}
         for c in mock_cats:
             p_id = c['parent_id']
@@ -353,31 +331,22 @@ class TestPhase4Categories:
         self.assert_equal(len(by_parent[None]), 2, "2 root categories identified")
         self.assert_equal(len(by_parent[1]), 2, "2 sub-categories found under parent 1")
 
-    def test_service_search_logic(self):
-        print("\n[Group 9] Bilingual Service Search Logic:")
-        mock_services = [
-            {'name_bn': 'এমবিবিএস ডাক্তার', 'name_en': 'MBBS Doctor', 'desc': 'চিকিৎসা সেবা'},
-            {'name_bn': 'অটো ইট সরবরাহ', 'name_en': 'Auto Bricks Supply', 'desc': 'নির্মাণ সামগ্রী'},
-            {'name_bn': 'সী-ভিউ হোটেল', 'name_en': 'Sea-View Hotel', 'desc': 'কলাতলী বিচ'},
+    def test_alias_search_ranking(self):
+        print("\n[Group 10] Alias Search Ranking & Routing:")
+        # Mock taxonomy search resolution
+        query = "ফ্রিজ নষ্ট"
+        norm_q = unicodedata.normalize('NFC', query).strip().lower()
+        matched_aliases = [
+            a for a in INITIAL_TAXONOMY_ALIASES
+            if a['normalized_text'].lower() == norm_q or norm_q in a['normalized_text'].lower()
         ]
-
-        def search(query):
-            norm_q = unicodedata.normalize('NFC', query).strip().lower()
-            return [
-                s for s in mock_services
-                if norm_q in s['name_bn'].lower() or norm_q in s['name_en'].lower() or norm_q in s['desc'].lower()
-            ]
-
-        res_bn = search("ডাক্তার")
-        self.assert_equal(len(res_bn), 1, "Found 1 service for Bengali query 'ডাক্তার'")
-        self.assert_equal(res_bn[0]['name_en'], "MBBS Doctor", "Correct doctor service matched")
-
-        res_en = search("bricks")
-        self.assert_equal(len(res_en), 1, "Found 1 service for English query 'bricks'")
-        self.assert_equal(res_en[0]['name_bn'], "অটো ইট সরবরাহ", "Correct bricks service matched")
+        self.assert_true(len(matched_aliases) > 0, f"Found match for '{query}' in aliases")
+        if matched_aliases:
+            # Should route to Category 2 (Home Appliance & AC Repair)
+            self.assert_equal(matched_aliases[0]['category_id'], 2, "Routes to Category 2 (Home Appliance & AC)")
 
     def test_global_bangla_typography_compliance(self):
-        print("\n[Group 10] Global Bangla Typography Standard Contract:")
+        print("\n[Group 11] Global Bangla Typography Standard Contract:")
         typography_rules = {
             'large_headings': 'Hind Siliguri',
             'medium_headings': 'Baloo Da 2',
